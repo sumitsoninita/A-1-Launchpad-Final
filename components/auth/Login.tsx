@@ -4,9 +4,10 @@ import { AppUser, Role } from '../../types';
 
 interface LoginProps {
   onLogin: (user: AppUser) => void;
+  onForgotPassword?: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -138,6 +139,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               {loading ? (isSignUp ? 'Signing Up...' : 'Signing In...') : (isSignUp ? 'Sign Up' : 'Sign In')}
             </button>
           </div>
+
+          {!isSignUp && onForgotPassword && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">

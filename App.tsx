@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppUser, Role } from './types';
 import { api } from './services/api';
+import { supabase } from './services/supabase';
 import Login from './components/auth/Login';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import CustomerDashboard from './components/dashboard/CustomerDashboard';
 import ChannelPartnerDashboard from './components/dashboard/ChannelPartnerDashboard';
@@ -10,9 +13,12 @@ import Spinner from './components/shared/Spinner';
 import ChatWidget from './components/shared/ChatWidget';
 import Footer from './components/shared/Footer';
 
+type AuthView = 'login' | 'forgot-password' | 'reset-password';
+
 const App: React.FC = () => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authView, setAuthView] = useState<AuthView>('login');
 
   const checkUser = useCallback(() => {
     setLoading(true);
@@ -23,6 +29,20 @@ const App: React.FC = () => {
 
   useEffect(() => {
     checkUser();
+    
+    // Check if this is a password reset flow
+    const checkPasswordReset = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && window.location.hash.includes('type=recovery')) {
+          setAuthView('reset-password');
+        }
+      } catch (error) {
+        console.error('Error checking password reset session:', error);
+      }
+    };
+    
+    checkPasswordReset();
     // No subscription needed for mock auth, but in a real app with websockets you'd have one.
   }, [checkUser]);
 
@@ -33,6 +53,15 @@ const App: React.FC = () => {
   const handleLogout = () => {
     api.logout();
     setUser(null);
+    setAuthView('login');
+  };
+
+  const handleForgotPassword = () => {
+    setAuthView('forgot-password');
+  };
+
+  const handleBackToLogin = () => {
+    setAuthView('login');
   };
   
   const renderContent = () => {
@@ -41,7 +70,15 @@ const App: React.FC = () => {
     }
 
     if (!user) {
-      return <Login onLogin={handleLogin} />;
+      switch (authView) {
+        case 'forgot-password':
+          return <ForgotPassword onBackToLogin={handleBackToLogin} />;
+        case 'reset-password':
+          return <ResetPassword onBackToLogin={handleBackToLogin} />;
+        case 'login':
+        default:
+          return <Login onLogin={handleLogin} onForgotPassword={handleForgotPassword} />;
+      }
     }
 
     switch (user.role) {
