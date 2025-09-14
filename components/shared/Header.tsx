@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { AppUser } from '../../types';
 import { LanguageContext } from '../../contexts/LanguageContext';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface HeaderProps {
   user: AppUser | null;
@@ -9,13 +10,20 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
   const languageContext = useContext(LanguageContext);
+  const themeContext = useContext(ThemeContext);
+  
   if (!languageContext) {
     throw new Error('Header must be used within a LanguageProvider');
   }
+  if (!themeContext) {
+    throw new Error('Header must be used within a ThemeProvider');
+  }
+  
   const { language, setLanguage, t } = languageContext;
+  const { theme, toggleTheme } = themeContext;
 
   const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'es' : 'en');
+    setLanguage(language === 'en' ? 'ar' : 'en');
   };
 
   return (
@@ -32,10 +40,32 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Service Hub Pro</h1>
             </div>
           </div>
-          <div className="flex items-center">
-            <button onClick={toggleLanguage} className="mr-4 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
-              {language === 'en' ? 'Español' : 'English'}
+          <div className="flex items-center space-x-4">
+            {/* Language Toggle */}
+            <button 
+              onClick={toggleLanguage} 
+              className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              {t('languageToggle')}
             </button>
+            
+            {/* Theme Toggle */}
+            <button 
+              onClick={toggleTheme} 
+              className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              title={theme === 'light' ? t('darkModeToggle') : t('lightModeToggle')}
+            >
+              {theme === 'light' ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              )}
+            </button>
+            
             {user && (
               <div className="flex items-center space-x-4">
                 <div className="text-right">

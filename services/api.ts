@@ -1,5 +1,5 @@
 import { AppUser, Role, ServiceRequest, Status, Complaint, Quote, Feedback } from '../types';
-import { supabase } from './supabase';
+import { supabase, supabaseAdmin } from './supabase';
 
 // ================================================================= //
 // Supabase API Service - Real database integration                  //
@@ -278,11 +278,17 @@ export const api = {
 
     async resetPassword(email: string): Promise<void> {
         try {
+            const redirectUrl = `${window.location.origin}/#type=recovery`;
+            console.log('Sending password reset email to:', email);
+            console.log('Redirect URL:', redirectUrl);
+            
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/#type=recovery`
+                redirectTo: redirectUrl
             });
             
             if (error) throw error;
+            
+            console.log('Password reset email sent successfully');
         } catch (error) {
             console.error('Error sending password reset:', error);
             throw new Error('Failed to send password reset email');
@@ -358,16 +364,62 @@ export const api = {
         }
     },
 
-    async addServiceRequest(requestData: Omit<ServiceRequest, 'id' | 'created_at' | 'updated_at' | 'status' | 'audit_log'>, userEmail: string): Promise<ServiceRequest> {
+    async uploadImages(files: File[], requestId: string): Promise<string[]> {
+        try {
+            console.log('Converting images to base64 for storage...');
+            
+            const convertToBase64 = (file: File): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        if (typeof reader.result === 'string') {
+                            resolve(reader.result);
+                        } else {
+                            reject(new Error('Failed to convert file to base64'));
+                        }
+                    };
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsDataURL(file);
+                });
+            };
+
+            const base64Promises = files.map(async (file, index) => {
+                try {
+                    const base64 = await convertToBase64(file);
+                    console.log(`Image ${index + 1} converted to base64 successfully`);
+                    return base64;
+                } catch (error) {
+                    console.error(`Failed to convert image ${index + 1}:`, error);
+                    throw error;
+                }
+            });
+            
+            const base64Images = await Promise.all(base64Promises);
+            console.log('All images converted to base64 successfully');
+            return base64Images;
+        } catch (error) {
+            console.error('Error converting images to base64:', error);
+            throw new Error('Failed to process images');
+        }
+    },
+
+    async addServiceRequest(requestData: Omit<ServiceRequest, 'id' | 'created_at' | 'updated_at' | 'status' | 'audit_log'>, userEmail: string, imageFiles?: File[]): Promise<ServiceRequest> {
         try {
             const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
             const auditLog = [{ timestamp: new Date().toISOString(), user: userEmail, action: 'Request created' }];
+            
+            // Upload images if provided
+            let imageUrls: string[] = [];
+            if (imageFiles && imageFiles.length > 0) {
+                imageUrls = await this.uploadImages(imageFiles, requestId);
+            }
             
             const { data: newRequest, error } = await supabase
                 .from('service_requests')
                 .insert({
                     id: requestId,
                     ...requestData,
+                    image_urls: imageUrls,
                     status: 'Received',
                     audit_log: auditLog
                 })

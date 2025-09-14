@@ -17,7 +17,26 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onBackToLogin }) => {
     // Check if we have a valid session from the reset link
     const checkSession = async () => {
       try {
+        console.log('Checking reset password session...');
+        
+        // First, check if URL indicates this is a password reset
+        const urlParams = new URLSearchParams(window.location.search);
+        const hash = window.location.hash;
+        const isPasswordResetUrl = 
+          hash.includes('type=recovery') || 
+          hash.includes('access_token') ||
+          urlParams.get('type') === 'recovery' ||
+          urlParams.get('access_token');
+        
+        if (!isPasswordResetUrl) {
+          console.log('No password reset indicators in URL');
+          setError('Invalid reset link. Please request a new password reset.');
+          return;
+        }
+        
+        // Get the session
         const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
           console.error('Session error:', error);
           setError('Invalid or expired reset link. Please request a new password reset.');
@@ -25,9 +44,20 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onBackToLogin }) => {
         }
         
         if (session) {
+          console.log('Valid reset session found');
           setIsValidSession(true);
         } else {
-          setError('Invalid or expired reset link. Please request a new password reset.');
+          console.log('No session found, waiting for auth state...');
+          // Wait a bit for the session to be established
+          setTimeout(async () => {
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession) {
+              console.log('Session found on retry');
+              setIsValidSession(true);
+            } else {
+              setError('Invalid or expired reset link. Please request a new password reset.');
+            }
+          }, 2000);
         }
       } catch (err) {
         console.error('Error checking session:', err);
@@ -36,6 +66,21 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onBackToLogin }) => {
     };
 
     checkSession();
+    
+    // Also listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('ResetPassword: Auth state change:', event, session ? 'session exists' : 'no session');
+      
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        console.log('Password recovery session detected in ResetPassword component');
+        setIsValidSession(true);
+        setError(null);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

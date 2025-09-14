@@ -44,6 +44,7 @@ export interface ServiceRequest {
   serial_number: string;
   customer_name: string;
   customer_id: string;
+  customer_phone?: string;
   product_type: ProductType;
   product_details: string;
   purchase_date: string;

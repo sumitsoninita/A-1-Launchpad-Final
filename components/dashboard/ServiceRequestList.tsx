@@ -5,6 +5,7 @@ import { ServiceRequest, Status } from '../../types';
 interface ServiceRequestListProps {
   requests: ServiceRequest[];
   onSelectRequest: (request: ServiceRequest) => void;
+  showRepairHistory?: boolean;
 }
 
 const getStatusColor = (status: Status) => {
@@ -22,7 +23,7 @@ const getStatusColor = (status: Status) => {
   }
 };
 
-const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSelectRequest }) => {
+const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSelectRequest, showRepairHistory = false }) => {
   return (
     <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -30,34 +31,66 @@ const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSel
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Request ID</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+              {!showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>}
+              {!showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>}
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Address</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service Center</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date Submitted</th>
+              {showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Repair History</th>}
               <th scope="col" className="relative px-6 py-3">
                 <span className="sr-only">View</span>
               </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {requests.map((request) => (
-              <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400">...{request.id.slice(-8)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.customer_name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{request.product_type}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}>
-                    {request.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(request.created_at).toLocaleDateString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => onSelectRequest(request)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
-                    View Details
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {requests.map((request) => {
+              // Parse address and service center from geolocation
+              const address = request.geolocation && request.geolocation.includes('|') 
+                ? request.geolocation.split('|')[0].trim() 
+                : (request.geolocation || 'N/A');
+              
+              const serviceCenter = request.geolocation && request.geolocation.includes('|') 
+                ? request.geolocation.split('|')[1]?.replace('Service Center:', '').trim() 
+                : 'N/A';
+
+              // Generate repair history summary
+              const repairHistory = request.audit_log && request.audit_log.length > 0 
+                ? `${request.audit_log.length} activity entries`
+                : 'No history';
+
+              return (
+                <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400">...{request.id.slice(-8)}</td>
+                  {!showRepairHistory && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.customer_name}</td>}
+                  {!showRepairHistory && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{request.customer_phone || 'N/A'}</td>}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{request.product_type}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={address}>
+                    {address}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{serviceCenter}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}>
+                      {request.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(request.created_at).toLocaleDateString()}</td>
+                  {showRepairHistory && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                        {repairHistory}
+                      </span>
+                    </td>
+                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button onClick={() => onSelectRequest(request)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

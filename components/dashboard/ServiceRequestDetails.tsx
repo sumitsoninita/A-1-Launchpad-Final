@@ -81,11 +81,42 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         <div className="md:col-span-2 space-y-6">
           <DetailSection title="Customer & Product Information">
             <DetailItem label="Customer Name" value={request.customer_name} />
+            {request.customer_phone && <DetailItem label="Phone Number" value={request.customer_phone} />}
             <DetailItem label="Serial Number" value={request.serial_number} />
             <DetailItem label="Product Type" value={request.product_type} />
             {request.product_details && <DetailItem label="Product Details" value={request.product_details} />}
             <DetailItem label="Purchase Date" value={new Date(request.purchase_date).toLocaleDateString()} />
             <DetailItem label="Warranty Claim" value={request.is_warranty_claim ? 'Yes' : 'No'} />
+          </DetailSection>
+
+          <DetailSection title="Location & Service Center">
+            {request.geolocation && (
+              <div className="space-y-2">
+                {request.geolocation.includes('|') ? (
+                  <>
+                    <div className="grid grid-cols-3 gap-4">
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
+                      <dd className="col-span-2 text-sm text-gray-900 dark:text-gray-100">
+                        {request.geolocation.split('|')[0].trim()}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Service Center</dt>
+                      <dd className="col-span-2 text-sm text-gray-900 dark:text-gray-100">
+                        {request.geolocation.split('|')[1]?.replace('Service Center:', '').trim()}
+                      </dd>
+                    </div>
+                  </>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Location Info</dt>
+                    <dd className="col-span-2 text-sm text-gray-900 dark:text-gray-100">
+                      {request.geolocation}
+                    </dd>
+                  </div>
+                )}
+              </div>
+            )}
           </DetailSection>
 
           <DetailSection title="Fault Description">
@@ -95,9 +126,30 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
           <DetailSection title="Submitted Photos">
             <div className="flex flex-wrap gap-4">
                 {request.image_urls && request.image_urls.length > 0 ? request.image_urls.map((url, index) => (
-                    <a href={url} target="_blank" rel="noopener noreferrer" key={index}>
-                        <img src={url} alt={`product photo ${index+1}`} className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:opacity-80 transition-opacity"/>
-                    </a>
+                    <div key={index} className="relative group">
+                        <img 
+                            src={url} 
+                            alt={`product photo ${index+1}`} 
+                            className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:opacity-80 transition-opacity cursor-pointer"
+                            onClick={() => {
+                                // Open image in new tab/window
+                                const newWindow = window.open();
+                                if (newWindow) {
+                                    newWindow.document.write(`
+                                        <html>
+                                            <head><title>Product Photo ${index + 1}</title></head>
+                                            <body style="margin:0; padding:20px; background:#f5f5f5; display:flex; justify-content:center; align-items:center; min-height:100vh;">
+                                                <img src="${url}" style="max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" />
+                                            </body>
+                                        </html>
+                                    `);
+                                }
+                            }}
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium">Click to view</span>
+                        </div>
+                    </div>
                 )) : <p className="text-gray-500 dark:text-gray-400 text-sm">No photos submitted.</p>}
             </div>
           </DetailSection>

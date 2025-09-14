@@ -14,6 +14,7 @@ interface ServiceRequestFormProps {
 
 const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSubmitSuccess, onCancel }) => {
   const [customerName, setCustomerName] = useState(user.fullName || '');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [productType, setProductType] = useState<ProductType>(PRODUCT_CATEGORIES[0]);
   const [productDetails, setProductDetails] = useState('');
@@ -24,7 +25,8 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [geolocation, setGeolocation] = useState<string | null>(null);
+  const [address, setAddress] = useState('');
+  const [serviceCenter, setServiceCenter] = useState('');
   const [showQRScanner, setShowQRScanner] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,8 +39,14 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
         return;
       }
       const validFiles = files.filter((file: File) => {
-        if (file.size > 5 * 1024 * 1024) {
-          setError(`File ${file.name} is too large. Max size is 5MB.`);
+        // Reduced size limit for base64 storage (base64 is ~33% larger)
+        if (file.size > 2 * 1024 * 1024) {
+          setError(`File ${file.name} is too large. Max size is 2MB for optimal performance.`);
+          return false;
+        }
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+          setError(`File ${file.name} is not an image. Please upload only image files.`);
           return false;
         }
         return true;
@@ -48,37 +56,32 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
     }
   };
   
-  const handleGeoTagging = () => {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const geo = `Lat: ${position.coords.latitude.toFixed(5)}, Lon: ${position.coords.longitude.toFixed(5)}`;
-                setGeolocation(geo);
-                alert("Location captured! This will help assign the nearest service center.");
-            },
-            () => {
-                setError("Unable to retrieve your location. Please check browser permissions.");
-            }
-        );
-    } else {
-        setError("Geolocation is not supported by this browser.");
-    }
-  };
+  // Service center options
+  const serviceCenters = [
+    { value: 'maharashtra', label: 'Maharashtra Service Center' },
+    { value: 'gujarat', label: 'Gujarat Service Center' },
+    { value: 'dubai', label: 'Dubai Service Center' }
+  ];
   
   const handleQRScan = () => {
       setShowQRScanner(true);
-      // This is a placeholder for a real QR scanner implementation
+      // For now, we'll use a simple prompt as a fallback since camera access requires HTTPS
+      // In a production app, you would use a library like @zxing/library or react-qr-reader
       setTimeout(() => {
-        const fakeSerialNumber = `SN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-        setSerialNumber(fakeSerialNumber);
-        setShowQRScanner(false);
-        alert(`QR Code scanned. Serial number detected: ${fakeSerialNumber}`);
-      }, 2000);
+        const userInput = prompt('Enter the serial number from the QR code (or type manually):');
+        if (userInput && userInput.trim()) {
+          setSerialNumber(userInput.trim());
+          setShowQRScanner(false);
+          alert(`Serial number captured: ${userInput.trim()}`);
+        } else {
+          setShowQRScanner(false);
+        }
+      }, 500);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !serialNumber || !purchaseDate || !faultDescription) {
+    if (!customerName || !serialNumber || !purchaseDate || !faultDescription || !address || !serviceCenter) {
         setError("Please fill in all required fields.");
         return;
     }
@@ -86,22 +89,19 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
     setError(null);
 
     try {
-        // In a real app, you would upload files to a cloud storage and get URLs.
-        // For this demo, we'll just use dummy URLs.
-        const imageUrls = photos.map(p => `/uploads/mock_${p.name}`);
-
         await api.addServiceRequest({
             customer_id: user.id,
             customer_name: customerName,
+            customer_phone: customerPhone,
             serial_number: serialNumber,
             product_type: productType,
             product_details: productDetails,
             purchase_date: purchaseDate,
             fault_description: faultDescription,
             is_warranty_claim: isWarrantyClaim,
-            image_urls: imageUrls,
-            geolocation: geolocation
-        }, user.email);
+            image_urls: [], // Will be populated by the API after upload
+            geolocation: `${address} | Service Center: ${serviceCenters.find(sc => sc.value === serviceCenter)?.label}`
+        }, user.email, photos);
 
         onFormSubmitSuccess();
     } catch (err: any) {
@@ -117,11 +117,59 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
       {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
       
       {showQRScanner && (
-        <Modal title="Scanning QR/Barcode" onClose={() => setShowQRScanner(false)}>
+        <Modal title="QR/Barcode Scanner" onClose={() => setShowQRScanner(false)}>
             <div className="flex flex-col items-center justify-center p-8">
-                <p className="text-gray-600 dark:text-gray-300 mb-4">Point your camera at the product's QR or Barcode.</p>
-                <Spinner />
-                <p className="mt-4 text-sm text-gray-500 animate-pulse">Simulating scan...</p>
+                <div className="text-center mb-6">
+                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary-100 dark:bg-primary-900/20 mb-4">
+                        <svg className="h-8 w-8 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Manual Entry</h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-4">
+                        Since camera access requires HTTPS, please manually enter the serial number from your product's QR code or barcode.
+                    </p>
+                </div>
+                <div className="w-full max-w-md">
+                    <input
+                        type="text"
+                        placeholder="Enter serial number..."
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-center text-lg"
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                const value = (e.target as HTMLInputElement).value.trim();
+                                if (value) {
+                                    setSerialNumber(value);
+                                    setShowQRScanner(false);
+                                    alert(`Serial number captured: ${value}`);
+                                }
+                            }
+                        }}
+                        autoFocus
+                    />
+                </div>
+                <div className="mt-6 flex space-x-3">
+                    <button
+                        onClick={() => setShowQRScanner(false)}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => {
+                            const input = document.querySelector('input[placeholder="Enter serial number..."]') as HTMLInputElement;
+                            const value = input?.value.trim();
+                            if (value) {
+                                setSerialNumber(value);
+                                setShowQRScanner(false);
+                                alert(`Serial number captured: ${value}`);
+                            }
+                        }}
+                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+                    >
+                        Confirm
+                    </button>
+                </div>
             </div>
         </Modal>
       )}
@@ -132,6 +180,10 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
           <div>
             <label htmlFor="customerName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer Name *</label>
             <input type="text" id="customerName" value={customerName} onChange={e => setCustomerName(e.target.value)} required className="mt-1 w-full input-field" />
+          </div>
+          <div>
+            <label htmlFor="customerPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
+            <input type="tel" id="customerPhone" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="mt-1 w-full input-field" placeholder="Enter your phone number" />
           </div>
           <div>
             <label htmlFor="serialNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Serial Number *</label>
@@ -177,7 +229,7 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
                         </label>
                         <p className="pl-1">or drag and drop</p>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">PNG, JPG, GIF up to 2MB each</p>
                 </div>
             </div>
             {photos.length > 0 && (
@@ -191,9 +243,34 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
         </div>
         
         <div>
-             <button type="button" onClick={handleGeoTagging} className="w-full flex items-center justify-center py-2 px-4 border border-dashed border-gray-400 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none">
-                📍 {geolocation ? `Location Captured: ${geolocation}` : 'Geo-Tag to Find Nearest Service Center'}
-            </button>
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your Address *</label>
+            <textarea 
+                id="address" 
+                value={address} 
+                onChange={e => setAddress(e.target.value)} 
+                required 
+                rows={3} 
+                className="mt-1 w-full input-field"
+                placeholder="Enter your complete address including city, state, and postal code"
+            />
+        </div>
+        
+        <div>
+            <label htmlFor="serviceCenter" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Service Center *</label>
+            <select 
+                id="serviceCenter" 
+                value={serviceCenter} 
+                onChange={e => setServiceCenter(e.target.value)} 
+                required 
+                className="mt-1 w-full input-field"
+            >
+                <option value="">Choose a service center...</option>
+                {serviceCenters.map(center => (
+                    <option key={center.value} value={center.value}>
+                        {center.label}
+                    </option>
+                ))}
+            </select>
         </div>
 
         <div className="flex items-center justify-end space-x-4 pt-4">

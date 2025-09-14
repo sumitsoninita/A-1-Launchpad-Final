@@ -96,7 +96,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ user }) => {
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by submitting a new repair request.</p>
               </div>
             ) : (
-              <ServiceRequestList requests={requests} onSelectRequest={handleRequestSelect} />
+              <ServiceRequestList requests={requests} onSelectRequest={handleRequestSelect} showRepairHistory={true} />
             )}
           </>
         );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AppUser, Role } from './types';
 import { api } from './services/api';
 import { supabase } from './services/supabase';
@@ -12,13 +12,18 @@ import Header from './components/shared/Header';
 import Spinner from './components/shared/Spinner';
 import ChatWidget from './components/shared/ChatWidget';
 import Footer from './components/shared/Footer';
+import { LanguageProvider, LanguageContext } from './contexts/LanguageContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 type AuthView = 'login' | 'forgot-password' | 'reset-password';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authView, setAuthView] = useState<AuthView>('login');
+  
+  const languageContext = useContext(LanguageContext);
+  const isRTL = languageContext?.language === 'ar';
 
   const checkUser = useCallback(() => {
     setLoading(true);
@@ -33,9 +38,40 @@ const App: React.FC = () => {
     // Check if this is a password reset flow
     const checkPasswordReset = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && window.location.hash.includes('type=recovery')) {
-          setAuthView('reset-password');
+        // Check URL parameters for password reset indicators
+        const urlParams = new URLSearchParams(window.location.search);
+        const hash = window.location.hash;
+        
+        // Check for various password reset URL patterns
+        const isPasswordReset = 
+          hash.includes('type=recovery') || 
+          hash.includes('access_token') ||
+          urlParams.get('type') === 'recovery' ||
+          urlParams.get('access_token');
+        
+        if (isPasswordReset) {
+          console.log('Password reset detected, checking session...');
+          
+          // Get the session to verify it's a valid reset session
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('Session error during password reset:', error);
+            // Still show reset password form, let the component handle the error
+            setAuthView('reset-password');
+          } else if (session) {
+            console.log('Valid reset session found, showing reset password form');
+            setAuthView('reset-password');
+          } else {
+            // No session yet, but URL indicates reset - wait a bit and try again
+            console.log('No session yet, waiting for auth state...');
+            setTimeout(async () => {
+              const { data: { session: retrySession } } = await supabase.auth.getSession();
+              if (retrySession) {
+                setAuthView('reset-password');
+              }
+            }, 1000);
+          }
         }
       } catch (error) {
         console.error('Error checking password reset session:', error);
@@ -43,7 +79,30 @@ const App: React.FC = () => {
     };
     
     checkPasswordReset();
-    // No subscription needed for mock auth, but in a real app with websockets you'd have one.
+    
+    // Listen for auth state changes to catch password reset sessions
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session ? 'session exists' : 'no session');
+      
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        const hash = window.location.hash;
+        const urlParams = new URLSearchParams(window.location.search);
+        const isPasswordReset = 
+          hash.includes('type=recovery') || 
+          hash.includes('access_token') ||
+          urlParams.get('type') === 'recovery' ||
+          urlParams.get('access_token');
+        
+        if (isPasswordReset) {
+          console.log('Password reset session detected via auth state change');
+          setAuthView('reset-password');
+        }
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [checkUser]);
 
   const handleLogin = (loggedInUser: AppUser) => {
@@ -96,7 +155,10 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans flex flex-col">
+    <div 
+      className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans flex flex-col ${isRTL ? 'rtl' : 'ltr'}`}
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       <Header user={user} onLogout={handleLogout} />
       <main className="p-4 sm:p-6 md:p-8 flex-grow">
         {renderContent()}
@@ -104,6 +166,16 @@ const App: React.FC = () => {
       {user && <ChatWidget user={user} />}
       <Footer />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ThemeProvider>
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
+    </ThemeProvider>
   );
 };
 
