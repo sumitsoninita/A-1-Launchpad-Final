@@ -1,6 +1,5 @@
 import React, { useContext } from 'react';
 import { AppUser } from '../../types';
-import { LanguageContext } from '../../contexts/LanguageContext';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface HeaderProps {
@@ -9,22 +8,13 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
-  const languageContext = useContext(LanguageContext);
   const themeContext = useContext(ThemeContext);
   
-  if (!languageContext) {
-    throw new Error('Header must be used within a LanguageProvider');
-  }
   if (!themeContext) {
     throw new Error('Header must be used within a ThemeProvider');
   }
   
-  const { language, setLanguage, t } = languageContext;
   const { theme, toggleTheme } = themeContext;
-
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'ar' : 'en');
-  };
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md">
@@ -32,28 +22,21 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-                <svg className="h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M12 6V3m0 18v-3m6-9h3m-3 6h3M6 9H3m3 6H3" />
-                </svg>
+              {/* A1 Logo */}
+              <div className="h-10 w-10 bg-primary-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">A1</span>
+              </div>
             </div>
             <div className="ml-4">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Service Hub Pro</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">A-1 Fence Services</h1>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            {/* Language Toggle */}
-            <button 
-              onClick={toggleLanguage} 
-              className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              {t('languageToggle')}
-            </button>
-            
             {/* Theme Toggle */}
             <button 
               onClick={toggleTheme} 
               className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              title={theme === 'light' ? t('darkModeToggle') : t('lightModeToggle')}
+              title={theme === 'light' ? 'Dark Mode' : 'Light Mode'}
             >
               {theme === 'light' ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +59,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
                   onClick={onLogout}
                   className="px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                 >
-                  {t('logout')}
+                  Logout
                 </button>
               </div>
             )}

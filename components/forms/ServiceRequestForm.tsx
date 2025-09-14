@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { AppUser, ProductType } from '../../types';
 import { api } from '../../services/api';
 import Spinner from '../shared/Spinner';
-import Modal from '../shared/Modal';
 
 const PRODUCT_CATEGORIES: ProductType[] = Object.values(ProductType);
 
@@ -63,20 +62,143 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
     { value: 'dubai', label: 'Dubai Service Center' }
   ];
   
-  const handleQRScan = () => {
-      setShowQRScanner(true);
-      // For now, we'll use a simple prompt as a fallback since camera access requires HTTPS
-      // In a production app, you would use a library like @zxing/library or react-qr-reader
-      setTimeout(() => {
-        const userInput = prompt('Enter the serial number from the QR code (or type manually):');
+  const handleQRScan = async () => {
+    setShowQRScanner(true);
+    
+    try {
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment' // Use back camera if available
+        } 
+      });
+      
+      // Show camera modal
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
+          <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Scan QR Code</h3>
+          <div class="relative">
+            <video id="qr-video" class="w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-lg" autoplay playsinline></video>
+            <div class="absolute inset-0 border-2 border-red-500 rounded-lg pointer-events-none">
+              <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-2 border-red-500 rounded-lg"></div>
+            </div>
+            <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white px-3 py-1 rounded text-sm">
+              Point camera at QR code and click Capture
+            </div>
+          </div>
+          <div class="mt-4 flex space-x-3">
+            <button id="close-camera" class="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500">
+              Close
+            </button>
+            <button id="capture-qr" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+              Capture & Scan
+            </button>
+            <button id="manual-entry" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              Manual Entry
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Set up video element
+      const videoElement = document.getElementById('qr-video') as HTMLVideoElement;
+      videoElement.srcObject = stream;
+      
+      // Function to capture image and send to API
+      const captureAndScan = async () => {
+        try {
+          // Create canvas to capture frame
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          
+          canvas.width = videoElement.videoWidth;
+          canvas.height = videoElement.videoHeight;
+          
+          // Draw current video frame to canvas
+          context?.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+          
+          // Convert to base64
+          const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          
+          // Call Arya AI API
+          const response = await fetch('https://ping.arya.ai/api/v1/qr', {
+            method: 'POST',
+            headers: {
+              'token': 'ce71f69df66167c4a829e6e01887fb18',
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              doc_type: 'image',
+              doc_base64: base64Image,
+              req_id: `qr_scan_${Date.now()}`
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success && result.data && result.data.text) {
+            // QR code detected!
+            const qrText = result.data.text;
+            console.log('QR Code detected:', qrText);
+            
+            // Set the serial number
+            setSerialNumber(qrText);
+            
+            // Stop camera and close modal
+            stream.getTracks().forEach(track => track.stop());
+            document.body.removeChild(modal);
+            setShowQRScanner(false);
+            
+            // Show success message
+            alert(`QR Code scanned successfully!\nSerial Number: ${qrText}`);
+          } else {
+            alert('No QR code detected in the image. Please try again with a clearer view of the QR code.');
+          }
+          
+        } catch (error) {
+          console.error('QR scanning error:', error);
+          alert('Error scanning QR code. Please try again or use manual entry.');
+        }
+      };
+      
+      // Handle capture button
+      document.getElementById('capture-qr')!.addEventListener('click', captureAndScan);
+      
+      // Handle close button
+      document.getElementById('close-camera')!.addEventListener('click', () => {
+        stream.getTracks().forEach(track => track.stop());
+        document.body.removeChild(modal);
+        setShowQRScanner(false);
+      });
+      
+      // Handle manual entry button
+      document.getElementById('manual-entry')!.addEventListener('click', () => {
+        stream.getTracks().forEach(track => track.stop());
+        document.body.removeChild(modal);
+        setShowQRScanner(false);
+        
+        const userInput = prompt('Enter the serial number manually:');
         if (userInput && userInput.trim()) {
           setSerialNumber(userInput.trim());
-          setShowQRScanner(false);
           alert(`Serial number captured: ${userInput.trim()}`);
-        } else {
-          setShowQRScanner(false);
         }
-      }, 500);
+      });
+      
+    } catch (error) {
+      console.error('Camera access error:', error);
+      setShowQRScanner(false);
+      
+      // Fallback to manual entry
+      const userInput = prompt('Camera not available. Please enter the serial number manually:');
+      if (userInput && userInput.trim()) {
+        setSerialNumber(userInput.trim());
+        alert(`Serial number captured: ${userInput.trim()}`);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,63 +238,6 @@ const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({ user, onFormSub
       <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">New Service Request</h2>
       {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
       
-      {showQRScanner && (
-        <Modal title="QR/Barcode Scanner" onClose={() => setShowQRScanner(false)}>
-            <div className="flex flex-col items-center justify-center p-8">
-                <div className="text-center mb-6">
-                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary-100 dark:bg-primary-900/20 mb-4">
-                        <svg className="h-8 w-8 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                        </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Manual Entry</h3>
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">
-                        Since camera access requires HTTPS, please manually enter the serial number from your product's QR code or barcode.
-                    </p>
-                </div>
-                <div className="w-full max-w-md">
-                    <input
-                        type="text"
-                        placeholder="Enter serial number..."
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-center text-lg"
-                        onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                                const value = (e.target as HTMLInputElement).value.trim();
-                                if (value) {
-                                    setSerialNumber(value);
-                                    setShowQRScanner(false);
-                                    alert(`Serial number captured: ${value}`);
-                                }
-                            }
-                        }}
-                        autoFocus
-                    />
-                </div>
-                <div className="mt-6 flex space-x-3">
-                    <button
-                        onClick={() => setShowQRScanner(false)}
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={() => {
-                            const input = document.querySelector('input[placeholder="Enter serial number..."]') as HTMLInputElement;
-                            const value = input?.value.trim();
-                            if (value) {
-                                setSerialNumber(value);
-                                setShowQRScanner(false);
-                                alert(`Serial number captured: ${value}`);
-                            }
-                        }}
-                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
-                    >
-                        Confirm
-                    </button>
-                </div>
-            </div>
-        </Modal>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

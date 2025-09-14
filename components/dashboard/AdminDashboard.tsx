@@ -85,16 +85,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Management Dashboard</h1>
       <p className="text-gray-500 dark:text-gray-400">Welcome, {user.email}. Role: <span className="font-semibold capitalize">{user.role.replace('_', ' ')}</span></p>
       
-       <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-          <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-            Overview & Analytics
-          </button>
-          <button onClick={() => setActiveTab('feedback')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'feedback' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-            Customer Feedback <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-primary-100 text-primary-800 rounded-full">{feedback.length}</span>
-          </button>
-        </nav>
-      </div>
+       {user.role === Role.Admin && (
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+              Overview & Analytics
+            </button>
+            <button onClick={() => setActiveTab('feedback')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'feedback' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+              Customer Feedback <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-primary-100 text-primary-800 rounded-full">{feedback.length}</span>
+            </button>
+          </nav>
+        </div>
+      )}
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
@@ -103,11 +105,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             <KpiCard title="Total Requests" value={kpiData.total} />
             <KpiCard title="In Progress" value={kpiData.inProgress} />
             <KpiCard title="Completed This Month" value={kpiData.completed} />
-            <KpiCard title="Avg. Satisfaction" value={kpiData.avgRating + ' / 5'} />
+            {user.role === Role.Admin && <KpiCard title="Avg. Satisfaction" value={kpiData.avgRating + ' / 5'} />}
           </div>
 
-          {/* Analytics Charts */}
-          <AnalyticsCharts requests={requests} />
+          {/* Analytics Charts - Admin Only */}
+          {user.role === Role.Admin && <AnalyticsCharts requests={requests} />}
           
            <h2 className="text-2xl font-bold text-gray-800 dark:text-white pt-4">Service Requests</h2>
 
@@ -142,7 +144,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         </div>
       )}
 
-      {activeTab === 'feedback' && (
+      {activeTab === 'feedback' && user.role === Role.Admin && (
         <div className="space-y-6">
            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Recent Customer Feedback</h2>
            {loading ? <div className="flex justify-center items-center h-64"><Spinner /></div> : <FeedbackList feedback={feedback} />}

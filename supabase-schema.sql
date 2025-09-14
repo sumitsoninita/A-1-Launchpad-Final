@@ -1,4 +1,4 @@
--- Service Hub Pro Database Schema
+-- A-1 Fence Services Database Schema
 -- Run these commands in your Supabase SQL Editor
 
 -- Create enum types

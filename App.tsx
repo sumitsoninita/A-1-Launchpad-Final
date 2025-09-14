@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AppUser, Role } from './types';
 import { api } from './services/api';
 import { supabase } from './services/supabase';
@@ -12,7 +12,6 @@ import Header from './components/shared/Header';
 import Spinner from './components/shared/Spinner';
 import ChatWidget from './components/shared/ChatWidget';
 import Footer from './components/shared/Footer';
-import { LanguageProvider, LanguageContext } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 type AuthView = 'login' | 'forgot-password' | 'reset-password';
@@ -21,9 +20,6 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authView, setAuthView] = useState<AuthView>('login');
-  
-  const languageContext = useContext(LanguageContext);
-  const isRTL = languageContext?.language === 'ar';
 
   const checkUser = useCallback(() => {
     setLoading(true);
@@ -155,10 +151,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div 
-      className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans flex flex-col ${isRTL ? 'rtl' : 'ltr'}`}
-      dir={isRTL ? 'rtl' : 'ltr'}
-    >
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans flex flex-col">
       <Header user={user} onLogout={handleLogout} />
       <main className="p-4 sm:p-6 md:p-8 flex-grow">
         {renderContent()}
@@ -172,9 +165,7 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <LanguageProvider>
-        <AppContent />
-      </LanguageProvider>
+      <AppContent />
     </ThemeProvider>
   );
 };
