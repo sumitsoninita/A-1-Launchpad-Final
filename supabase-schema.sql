@@ -7,11 +7,14 @@ CREATE TYPE product_type AS ENUM ('Energizer Product', 'Power Adapter', 'Gate Mo
 CREATE TYPE request_status AS ENUM ('Received', 'Diagnosis', 'Awaiting Approval', 'Repair in Progress', 'Quality Check', 'Dispatched', 'Completed', 'Cancelled');
 
 -- Create users table (for app users, not auth users)
+-- This table will store both Supabase Auth users (customers) and hardcoded users (admin/service/partner)
 CREATE TABLE app_users (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     role user_role NOT NULL,
     full_name TEXT,
+    supabase_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Link to Supabase Auth for customers
+    is_supabase_user BOOLEAN DEFAULT FALSE, -- Flag to distinguish between Supabase Auth users and hardcoded users
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -89,19 +92,39 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_app_users_updated_at BEFORE UPDATE ON app_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_service_requests_updated_at BEFORE UPDATE ON service_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert initial test data
-INSERT INTO app_users (id, email, role, full_name) VALUES 
-    ('user-1', 'customer@test.com', 'customer', 'John Doe'),
-    ('user-2', 'admin@test.com', 'admin', 'Admin User'),
-    ('user-3', 'service@test.com', 'service', 'Service Tech'),
-    ('user-4', 'partner@test.com', 'channel_partner', 'Partner Inc.');
+-- Function to handle new user signup
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO app_users (email, role, full_name, supabase_user_id, is_supabase_user)
+    VALUES (
+        NEW.email,
+        'customer', -- Default role for Supabase Auth users
+        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+        NEW.id,
+        TRUE
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to automatically create app_users entry when Supabase Auth user signs up
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Insert initial test data (hardcoded users for admin, service, and partner)
+INSERT INTO app_users (id, email, role, full_name, is_supabase_user) VALUES 
+    ('user-2', 'admin@test.com', 'admin', 'Admin User', FALSE),
+    ('user-3', 'service@test.com', 'service', 'Service Tech', FALSE),
+    ('user-4', 'partner@test.com', 'channel_partner', 'Partner Inc.', FALSE);
 
 INSERT INTO service_requests (
     id, serial_number, customer_name, customer_id, product_type, 
     product_details, purchase_date, fault_description, status, 
     is_warranty_claim, audit_log
 ) VALUES (
-    'req-abc-123', 'SN-ABC12345', 'John Doe', 'user-1', 'Energizer Product',
+    'req-abc-123', 'SN-ABC12345', 'John Doe', 'customer-demo', 'Energizer Product',
     'Energizer Power Bank 10000mAh', '2023-05-15', 
     'The power bank is not charging. The indicator lights do not turn on when plugged in.',
     'Completed', TRUE,

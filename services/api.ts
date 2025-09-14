@@ -31,30 +31,77 @@ const saveToStorage = <T>(key: string, value: T) => {
 // --- API Methods ---
 export const api = {
 
-    // --- Auth (keeping existing mock auth system) ---
+    // --- Auth (dual system: Supabase Auth for customers, hardcoded for admin/service/partner) ---
     async login(email: string, password: string): Promise<AppUser> {
         return new Promise((resolve, reject) => {
             setTimeout(async () => {
                 try {
-                    const { data: users, error } = await supabase
+                    // First, check if this is a hardcoded user (admin/service/partner)
+                    const { data: hardcodedUsers, error: hardcodedError } = await supabase
                         .from('app_users')
                         .select('*')
-                        .eq('email', email.toLowerCase());
+                        .eq('email', email.toLowerCase())
+                        .eq('is_supabase_user', false);
                     
-                    if (error) throw error;
+                    if (hardcodedError) throw hardcodedError;
                     
-                    const user = users?.[0];
-                    if (user) {
+                    const hardcodedUser = hardcodedUsers?.[0];
+                    if (hardcodedUser) {
+                        // For hardcoded users, we'll use simple password validation
+                        // In a real app, you'd want proper password hashing
+                        const validPasswords: { [key: string]: string } = {
+                            'admin@test.com': 'admin123',
+                            'service@test.com': 'service123',
+                            'partner@test.com': 'partner123'
+                        };
+                        
+                        if (validPasswords[email.toLowerCase()] === password) {
+                            const appUser: AppUser = {
+                                id: hardcodedUser.id,
+                                email: hardcodedUser.email,
+                                role: hardcodedUser.role as Role,
+                                fullName: hardcodedUser.full_name
+                            };
+                            saveToStorage(SESSION_KEY, appUser);
+                            resolve(appUser);
+                            return;
+                        } else {
+                            reject(new Error('Invalid email or password'));
+                            return;
+                        }
+                    }
+                    
+                    // If not a hardcoded user, try Supabase Auth (for customers)
+                    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                        email: email.toLowerCase(),
+                        password: password
+                    });
+                    
+                    if (authError) {
+                        reject(new Error('Invalid email or password'));
+                        return;
+                    }
+                    
+                    if (authData.user) {
+                        // Get the corresponding app_users record
+                        const { data: appUserData, error: appUserError } = await supabase
+                            .from('app_users')
+                            .select('*')
+                            .eq('supabase_user_id', authData.user.id)
+                            .single();
+                        
+                        if (appUserError) throw appUserError;
+                        
                         const appUser: AppUser = {
-                            id: user.id,
-                            email: user.email,
-                            role: user.role as Role,
-                            fullName: user.full_name
+                            id: appUserData.id,
+                            email: appUserData.email,
+                            role: appUserData.role as Role,
+                            fullName: appUserData.full_name
                         };
                         saveToStorage(SESSION_KEY, appUser);
                         resolve(appUser);
                     } else {
-                        reject(new Error('Invalid email or password'));
+                        reject(new Error('Login failed'));
                     }
                 } catch (error) {
                     console.error('Login error:', error);
@@ -68,53 +115,178 @@ export const api = {
         return new Promise((resolve, reject) => {
             setTimeout(async () => {
                 try {
-                    // Check if user already exists
+                    // Only allow customer registration through Supabase Auth
+                    if (role !== Role.Customer) {
+                        return reject(new Error('Only customer registration is allowed. Admin, service, and partner accounts are managed separately.'));
+                    }
+                    
+                    // Check if user already exists in app_users
                     const { data: existingUsers, error: checkError } = await supabase
                         .from('app_users')
                         .select('id')
                         .eq('email', email.toLowerCase());
                     
-                    if (checkError) throw checkError;
+                    if (checkError) {
+                        console.error('Error checking existing users:', checkError);
+                        throw checkError;
+                    }
                     
                     if (existingUsers && existingUsers.length > 0) {
                         return reject(new Error('User with this email already exists.'));
                     }
                     
-                    // Create new user
-                    const { data: newUser, error: insertError } = await supabase
-                        .from('app_users')
-                        .insert({
-                            email: email.toLowerCase(),
-                            role: role,
-                            full_name: fullName
-                        })
-                        .select()
-                        .single();
+                    // Create user in Supabase Auth with minimal options
+                    const { data: authData, error: authError } = await supabase.auth.signUp({
+                        email: email.toLowerCase(),
+                        password: password
+                    });
                     
-                    if (insertError) throw insertError;
+                    if (authError) {
+                        console.error('Supabase Auth error:', authError);
+                        if (authError.message.includes('already registered') || authError.message.includes('already been registered')) {
+                            return reject(new Error('User with this email already exists.'));
+                        }
+                        return reject(new Error('Registration failed: ' + authError.message));
+                    }
                     
-                    const appUser: AppUser = {
-                        id: newUser.id,
-                        email: newUser.email,
-                        role: newUser.role as Role,
-                        fullName: newUser.full_name
-                    };
-                    
-                    resolve(appUser);
+                    if (authData.user) {
+                        console.log('Auth user created:', authData.user.id);
+                        
+                        // Always manually create the app_users record to ensure it works
+                        // This is more reliable than depending on the trigger
+                        const { data: newAppUser, error: insertError } = await supabase
+                            .from('app_users')
+                            .insert({
+                                email: email.toLowerCase(),
+                                role: 'customer',
+                                full_name: fullName,
+                                supabase_user_id: authData.user.id,
+                                is_supabase_user: true
+                            })
+                            .select()
+                            .single();
+                        
+                        if (insertError) {
+                            console.error('Error creating app_users record:', insertError);
+                            
+                            // If it's a duplicate key error, try to fetch the existing record
+                            if (insertError.code === '23505' || insertError.message.includes('duplicate key')) {
+                                console.log('User already exists in app_users, fetching existing record...');
+                                
+                                const { data: existingAppUser, error: fetchError } = await supabase
+                                    .from('app_users')
+                                    .select('*')
+                                    .eq('email', email.toLowerCase())
+                                    .single();
+                                
+                                if (fetchError) {
+                                    throw fetchError;
+                                }
+                                
+                                const appUser: AppUser = {
+                                    id: existingAppUser.id,
+                                    email: existingAppUser.email,
+                                    role: existingAppUser.role as Role,
+                                    fullName: existingAppUser.full_name
+                                };
+                                
+                                resolve(appUser);
+                                return;
+                            }
+                            
+                            throw insertError;
+                        }
+                        
+                        const appUser: AppUser = {
+                            id: newAppUser.id,
+                            email: newAppUser.email,
+                            role: newAppUser.role as Role,
+                            fullName: newAppUser.full_name
+                        };
+                        
+                        resolve(appUser);
+                    } else {
+                        reject(new Error('Registration failed - no user data returned'));
+                    }
                 } catch (error) {
                     console.error('Registration error:', error);
-                    reject(new Error('Registration failed'));
+                    reject(new Error('Registration failed: ' + (error as Error).message));
                 }
             }, 500);
         });
     },
     
-    logout() {
-        localStorage.removeItem(SESSION_KEY);
+    async logout() {
+        try {
+            // Sign out from Supabase Auth (this will work for both authenticated and non-authenticated users)
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error('Supabase logout error:', error);
+        } finally {
+            // Always clear local storage
+            localStorage.removeItem(SESSION_KEY);
+        }
     },
     
     getCurrentUser(): AppUser | null {
         return getFromStorage<AppUser | null>(SESSION_KEY, null);
+    },
+
+    // --- Customer Profile Management ---
+    async updateCustomerProfile(userId: string, updates: { fullName?: string }): Promise<AppUser> {
+        try {
+            const { data: updatedUser, error } = await supabase
+                .from('app_users')
+                .update({
+                    full_name: updates.fullName
+                })
+                .eq('id', userId)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            
+            const appUser: AppUser = {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                role: updatedUser.role as Role,
+                fullName: updatedUser.full_name
+            };
+            
+            // Update the stored session
+            saveToStorage(SESSION_KEY, appUser);
+            
+            return appUser;
+        } catch (error) {
+            console.error('Error updating customer profile:', error);
+            throw new Error('Failed to update profile');
+        }
+    },
+
+    async changeCustomerPassword(currentPassword: string, newPassword: string): Promise<void> {
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+            
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error changing password:', error);
+            throw new Error('Failed to change password');
+        }
+    },
+
+    async resetPassword(email: string): Promise<void> {
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/reset-password`
+            });
+            
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error sending password reset:', error);
+            throw new Error('Failed to send password reset email');
+        }
     },
 
     // --- Service Requests ---

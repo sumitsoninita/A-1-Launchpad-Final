@@ -112,7 +112,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
            {isSignUp && (
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Role (for demo)
+                Account Type
               </label>
               <select
                 id="role"
@@ -120,8 +120,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 onChange={e => setRole(e.target.value as Role)}
                 className="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
-                {Object.values(Role).map(r => <option key={r} value={r} className="capitalize">{r.replace('_', ' ')}</option>)}
+                <option value={Role.Customer}>Customer</option>
               </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Only customer accounts can be created here. Admin, service, and partner accounts are managed separately.
+              </p>
             </div>
           )}
 
@@ -146,6 +149,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             {isSignUp ? 'Sign In' : 'Sign Up'}
           </button>
         </p>
+        
+        {!isSignUp && (
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-2">Demo Accounts:</p>
+            <div className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+              <div>Admin: admin@test.com / admin123</div>
+              <div>Service: service@test.com / service123</div>
+              <div>Partner: partner@test.com / partner123</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
