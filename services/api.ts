@@ -2,6 +2,18 @@ import { AppUser, Role, ServiceRequest, Status, Complaint, EnrichedComplaint, Qu
 import { supabase, supabaseAdmin } from './supabase';
 import { createPaymentOrder, verifyPaymentSignature, getPaymentDetails, refundPayment } from './razorpay';
 
+interface Notification {
+  id: string;
+  type: 'payment' | 'status' | 'quote' | 'epr' | 'complaint';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  service_request_id?: string;
+  payment_id?: string;
+  customer_id: string;
+}
+
 // ================================================================= //
 // Supabase API Service - Real database integration                  //
 // Uses Supabase for data persistence and real-time updates         //
@@ -1305,6 +1317,7 @@ export const api = {
                 total_payments: totalPayments,
                 total_amount_captured: totalAmount,
                 successful_payments: successfulPayments,
+                pending_payments: payments?.filter(p => p.status === 'pending').length || 0,
                 failed_payments: payments?.filter(p => p.status === 'failed').length || 0,
                 cancelled_payments: payments?.filter(p => p.status === 'cancelled').length || 0,
                 refunded_payments: payments?.filter(p => p.status === 'refunded').length || 0,
@@ -1326,6 +1339,7 @@ export const api = {
             return {
                 total_payments: 0,
                 successful_payments: 0,
+                pending_payments: 0,
                 failed_payments: 0,
                 cancelled_payments: 0,
                 refunded_payments: 0,
@@ -1388,6 +1402,103 @@ export const api = {
                     // Fetch updated statistics when payments change
                     const stats = await this.getPaymentStatistics();
                     callback({ type: 'statistics_update', data: stats });
+                }
+            )
+            .subscribe();
+    },
+
+    // --- Notifications ---
+    async getCustomerNotifications(customerId: string): Promise<Notification[]> {
+        try {
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('customer_id', customerId)
+                .order('timestamp', { ascending: false })
+                .limit(50);
+
+            if (error) throw error;
+            
+            return data || [];
+        } catch (error) {
+            console.error('Error fetching customer notifications:', error);
+            throw new Error('Failed to fetch notifications');
+        }
+    },
+
+    async markNotificationAsRead(notificationId: string): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ read: true })
+                .eq('id', notificationId);
+
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            throw new Error('Failed to mark notification as read');
+        }
+    },
+
+    async markAllNotificationsAsRead(customerId: string): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ read: true })
+                .eq('customer_id', customerId)
+                .eq('read', false);
+
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+            throw new Error('Failed to mark all notifications as read');
+        }
+    },
+
+    async createNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>): Promise<Notification> {
+        try {
+            // Use the service role function to bypass RLS
+            const { data, error } = await supabase.rpc('create_notification_service_role', {
+                p_type: notification.type,
+                p_title: notification.title,
+                p_message: notification.message,
+                p_customer_id: notification.customer_id,
+                p_service_request_id: notification.service_request_id || null,
+                p_payment_id: notification.payment_id || null
+            });
+
+            if (error) throw error;
+            
+            // Return the created notification
+            return {
+                id: data,
+                type: notification.type,
+                title: notification.title,
+                message: notification.message,
+                timestamp: new Date().toISOString(),
+                read: false,
+                service_request_id: notification.service_request_id,
+                payment_id: notification.payment_id,
+                customer_id: notification.customer_id
+            };
+        } catch (error) {
+            console.error('Error creating notification:', error);
+            throw new Error('Failed to create notification');
+        }
+    },
+
+    subscribeToCustomerNotifications(customerId: string, callback: (payload: any) => void) {
+        return supabase
+            .channel(`customer_notifications_${customerId}`)
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'notifications',
+                    filter: `customer_id=eq.${customerId}`
+                }, 
+                async (payload) => {
+                    callback(payload);
                 }
             )
             .subscribe();

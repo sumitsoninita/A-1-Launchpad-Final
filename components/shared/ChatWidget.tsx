@@ -212,7 +212,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
 
       <div className={`fixed bottom-5 right-5 w-80 h-[28rem] bg-white dark:bg-gray-800 rounded-lg shadow-2xl flex flex-col transition-all duration-300 origin-bottom-right ${isOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0 pointer-events-none'}`}>
         <div className="bg-primary-600 p-3 flex justify-between items-center text-white rounded-t-lg">
-          <h3 className="font-semibold">Chat Support</h3>
+          <h3 className="font-semibold">Fence Bot</h3>
           <div className="flex items-center space-x-2">
             <button 
               onClick={() => setMessages([{ sender: 'bot', text: "Hello! I'm your A-1 Fence Services assistant. How can I help you today?" }])}

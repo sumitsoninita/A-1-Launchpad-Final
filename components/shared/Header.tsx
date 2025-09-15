@@ -23,9 +23,13 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              {/* A1 Logo */}
-              <div className="h-10 w-10 bg-primary-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">A1</span>
+              {/* A1 Fence Services Logo */}
+              <div className="h-10 w-10 flex items-center justify-center">
+                <img 
+                  src="https://media.licdn.com/dms/image/v2/D4D0BAQEhQa-81ecWbA/company-logo_200_200/B4DZV0W24aGcAM-/0/1741413904313/a1_fence_products_company_pvt_ltd_logo?e=2147483647&v=beta&t=gbF26_W-5uA97fp_v7K6f_N49hL6ZKxD8v_wG1xTz9Y" 
+                  alt="A1 Fence Services Logo" 
+                  className="h-full w-full object-contain rounded-lg"
+                />
               </div>
             </div>
             <div className="ml-4">
@@ -52,8 +56,8 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
             
             {user && (
               <div className="flex items-center space-x-4">
-                {/* Notifications - only show for admin, service, and epr roles */}
-                {(user.role === 'admin' || user.role === 'service' || user.role === 'epr') && (
+                {/* Notifications - only show for customer role */}
+                {user.role === 'customer' && (
                   <NotificationSystem 
                     user={user}
                     onNotificationClick={(notification) => {

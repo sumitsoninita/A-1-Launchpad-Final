@@ -5,6 +5,7 @@ import { ServiceRequest, Status } from '../../types';
 interface ServiceRequestListProps {
   requests: ServiceRequest[];
   onSelectRequest: (request: ServiceRequest) => void;
+  onComplaintClick?: (request: ServiceRequest) => void;
   showRepairHistory?: boolean;
 }
 
@@ -23,7 +24,7 @@ const getStatusColor = (status: Status) => {
   }
 };
 
-const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSelectRequest, showRepairHistory = false }) => {
+const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSelectRequest, onComplaintClick, showRepairHistory = false }) => {
   return (
     <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -34,32 +35,20 @@ const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSel
               {!showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>}
               {!showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>}
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Images</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Address</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service Center</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date Submitted</th>
-              {showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Repair History</th>}
               <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">View</span>
+                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {requests.map((request) => {
-              // Parse address and service center from geolocation
-              const address = request.geolocation && request.geolocation.includes('|') 
-                ? request.geolocation.split('|')[0].trim() 
-                : (request.geolocation || 'N/A');
-              
+              // Parse service center from geolocation
               const serviceCenter = request.geolocation && request.geolocation.includes('|') 
                 ? request.geolocation.split('|')[1]?.replace('Service Center:', '').trim() 
                 : 'N/A';
-
-              // Generate repair history summary
-              const repairHistory = request.audit_log && request.audit_log.length > 0 
-                ? `${request.audit_log.length} activity entries`
-                : 'No history';
 
               return (
                 <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
@@ -67,21 +56,6 @@ const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSel
                   {!showRepairHistory && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.customer_name}</td>}
                   {!showRepairHistory && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{request.customer_phone || 'N/A'}</td>}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{request.product_type}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {request.image_urls && request.image_urls.length > 0 ? (
-                      <div className="flex items-center space-x-1">
-                        <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-xs">{request.image_urls.length}</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-xs">No images</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={address}>
-                    {address}
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{serviceCenter}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}>
@@ -89,17 +63,21 @@ const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSel
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(request.created_at).toLocaleDateString()}</td>
-                  {showRepairHistory && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                        {repairHistory}
-                      </span>
-                    </td>
-                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => onSelectRequest(request)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
-                      View Details
-                    </button>
+                    <div className="flex items-center justify-end space-x-3">
+                      {request.status === Status.Completed && onComplaintClick && (
+                        <button 
+                          onClick={() => onComplaintClick(request)} 
+                          className="inline-flex items-center px-4 py-2 border border-yellow-500 rounded-md text-xs font-medium text-yellow-600 bg-white dark:bg-gray-700 hover:bg-yellow-50 dark:hover:bg-gray-600 focus:outline-none transition-colors duration-200"
+                          title="Submit complaint for this completed service"
+                        >
+                          Submit Complaint
+                        </button>
+                      )}
+                      <button onClick={() => onSelectRequest(request)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200 transition-colors duration-200">
+                        View Details
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

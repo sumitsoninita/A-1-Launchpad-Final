@@ -29,8 +29,6 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
   
   // Timeline state
   const [timelineFilter, setTimelineFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   
   // Audit log state
   const [auditFilter, setAuditFilter] = useState('all');
@@ -631,9 +629,10 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     </div>
   );
 
-  const renderComprehensiveTimeline = () => {
-    // Combine all timeline data
-    const allTimelineEntries = [];
+
+  const renderAuditLogTab = () => {
+    // Combine all timeline and audit log data
+    const allEntries = [];
     
     // Add main status timeline entries
     const statusTimeline = [
@@ -653,7 +652,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     // Add EPR timeline entries
     if (request.epr_timeline && request.epr_timeline.length > 0) {
       request.epr_timeline.forEach(entry => {
-        allTimelineEntries.push({
+        allEntries.push({
           timestamp: entry.timestamp,
           type: 'epr_action',
           action: entry.action,
@@ -672,7 +671,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
 
     // Add quote-related entries
     if (request.quote) {
-      allTimelineEntries.push({
+      allEntries.push({
         timestamp: request.quote.created_at,
         type: 'quote_created',
         action: 'Quote Generated',
@@ -686,7 +685,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
       });
 
       if (request.quote.is_approved !== null) {
-        allTimelineEntries.push({
+        allEntries.push({
           timestamp: request.updated_at,
           type: 'customer_decision',
           action: `Customer ${request.quote.is_approved ? 'Approved' : 'Rejected'} Quote`,
@@ -700,43 +699,60 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
       }
     }
 
-    // Combine and filter timeline entries
-    const combinedTimeline = [...statusTimeline, ...allTimelineEntries];
+    // Add audit log entries
+    if (request.audit_log && request.audit_log.length > 0) {
+      request.audit_log.forEach(log => {
+        allEntries.push({
+          timestamp: log.timestamp,
+          type: log.type || 'system_action',
+          action: log.action,
+          user: log.user,
+          details: log.details,
+          metadata: log.metadata,
+          icon: log.type === 'epr_action' ? '🔧' : log.type === 'service_action' ? '⚙️' : log.type === 'customer_action' ? '👤' : '📝',
+          color: log.type === 'epr_action' ? 'bg-blue-500' : log.type === 'service_action' ? 'bg-green-500' : log.type === 'customer_action' ? 'bg-purple-500' : 'bg-primary-500',
+          category: log.type || 'audit'
+        });
+      });
+    }
+
+    // Combine and filter all entries
+    const combinedEntries = [...statusTimeline, ...allEntries];
     
     // Apply filters
-    let filteredTimeline = combinedTimeline;
+    let filteredEntries = combinedEntries;
     
     if (timelineFilter !== 'all') {
-      filteredTimeline = filteredTimeline.filter(entry => entry.category === timelineFilter);
+      filteredEntries = filteredEntries.filter(entry => entry.category === timelineFilter);
     }
     
-    if (searchTerm) {
-      filteredTimeline = filteredTimeline.filter(entry => 
-        entry.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.user.toLowerCase().includes(searchTerm.toLowerCase())
+    if (auditSearch) {
+      filteredEntries = filteredEntries.filter(entry => 
+        entry.action.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        entry.details.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        entry.user.toLowerCase().includes(auditSearch.toLowerCase())
       );
     }
     
-    // Sort timeline entries
-    const sortedTimeline = filteredTimeline.sort((a, b) => {
+    // Sort entries
+    const sortedEntries = filteredEntries.sort((a, b) => {
       const timeA = new Date(a.timestamp).getTime();
       const timeB = new Date(b.timestamp).getTime();
-      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+      return auditSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
     });
 
     return (
       <div className='p-4'>
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Comprehensive Timeline</h3>
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Comprehensive Audit Log</h3>
           <div className="flex items-center space-x-4">
             {/* Search */}
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search timeline..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search audit log..."
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
                 className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -752,12 +768,13 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
               <option value="epr">EPR Actions</option>
               <option value="quote">Quotes</option>
               <option value="customer_action">Customer Actions</option>
+              <option value="audit">Audit Log</option>
             </select>
             
             {/* Sort Order */}
             <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+              value={auditSortOrder}
+              onChange={(e) => setAuditSortOrder(e.target.value as 'newest' | 'oldest')}
               className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="newest">Newest First</option>
@@ -772,7 +789,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                   customerName: request.customer_name,
                   serialNumber: request.serial_number,
                   exportDate: new Date().toISOString(),
-                  timeline: sortedTimeline.map(entry => ({
+                  auditLog: sortedEntries.map(entry => ({
                     timestamp: entry.timestamp,
                     type: entry.type,
                     action: entry.action,
@@ -782,7 +799,8 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                     ...(entry.cost_estimation && { cost_estimation: entry.cost_estimation, cost_estimation_currency: entry.cost_estimation_currency }),
                     ...(entry.epr_status && { epr_status: entry.epr_status }),
                     ...(entry.quote_amount && { quote_amount: entry.quote_amount, quote_currency: entry.quote_currency }),
-                    ...(entry.quote_decision && { quote_decision: entry.quote_decision })
+                    ...(entry.quote_decision && { quote_decision: entry.quote_decision }),
+                    ...(entry.metadata && { metadata: entry.metadata })
                   }))
                 };
                 
@@ -791,20 +809,21 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                 const url = URL.createObjectURL(dataBlob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `timeline-${request.id}-${new Date().toISOString().split('T')[0]}.json`;
+                link.download = `audit-log-${request.id}-${new Date().toISOString().split('T')[0]}.json`;
                 link.click();
                 URL.revokeObjectURL(url);
               }}
-              className="px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+              className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
             >
-              Export Timeline
+              Export JSON
             </button>
           </div>
         </div>
+        
         <div className="relative">
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
           <div className="space-y-6">
-            {sortedTimeline.map((entry, index) => (
+            {sortedEntries.map((entry, index) => (
               <div key={index} className="relative flex items-start">
                 <div className={`${entry.color} rounded-full h-8 w-8 flex items-center justify-center text-white text-sm z-10 relative`}>
                   {entry.icon}
@@ -813,9 +832,14 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                   <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold text-gray-800 dark:text-gray-100">{entry.action}</h4>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(entry.timestamp).toLocaleString()}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                          {entry.type}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(entry.timestamp).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                       by <span className="font-medium">{entry.user}</span>
@@ -860,154 +884,29 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                         </span>
                       </div>
                     )}
+
+                    {entry.metadata && (
+                      <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Additional Details:</p>
+                        <div className="space-y-1">
+                          {Object.entries(entry.metadata).map(([key, value]) => (
+                            <div key={key} className="flex justify-between text-xs">
+                              <span className="text-gray-600 dark:text-gray-400 capitalize">
+                                {key.replace(/_/g, ' ')}:
+                              </span>
+                              <span className="text-gray-800 dark:text-gray-200 font-medium">
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderAuditLogTab = () => {
-    // Filter and sort audit log entries
-    let filteredAuditLog = request.audit_log || [];
-    
-    if (auditSearch) {
-      filteredAuditLog = filteredAuditLog.filter(log => 
-        log.action.toLowerCase().includes(auditSearch.toLowerCase()) ||
-        log.user.toLowerCase().includes(auditSearch.toLowerCase()) ||
-        (log.details && log.details.toLowerCase().includes(auditSearch.toLowerCase()))
-      );
-    }
-    
-    const sortedAuditLog = filteredAuditLog.sort((a, b) => {
-      const timeA = new Date(a.timestamp).getTime();
-      const timeB = new Date(b.timestamp).getTime();
-      return auditSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
-    });
-    
-    return (
-      <div className='p-4'>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Comprehensive Activity Log</h3>
-          <div className="flex items-center space-x-4">
-            {/* Search */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search audit log..."
-                value={auditSearch}
-                onChange={(e) => setAuditSearch(e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            {/* Sort Order */}
-            <select
-              value={auditSortOrder}
-              onChange={(e) => setAuditSortOrder(e.target.value as 'newest' | 'oldest')}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
-            
-            {/* Export Button */}
-            <button
-              onClick={() => {
-                const dataStr = JSON.stringify(sortedAuditLog, null, 2);
-                const dataBlob = new Blob([dataStr], {type: 'application/json'});
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `audit-log-${request.id}-${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
-              Export JSON
-            </button>
-          </div>
-        </div>
-        
-        <div className="space-y-4">
-            {sortedAuditLog.map((log, index) => {
-                const getLogIcon = (type: string) => {
-                    switch (type) {
-                        case 'epr_action':
-                            return '🔧';
-                        case 'service_action':
-                            return '⚙️';
-                        case 'customer_action':
-                            return '👤';
-                        default:
-                            return '📝';
-                    }
-                };
-
-                const getLogColor = (type: string) => {
-                    switch (type) {
-                        case 'epr_action':
-                            return 'bg-blue-500';
-                        case 'service_action':
-                            return 'bg-green-500';
-                        case 'customer_action':
-                            return 'bg-purple-500';
-                        default:
-                            return 'bg-primary-500';
-                    }
-                };
-
-                return (
-                    <li key={index} className="flex items-start p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className={`${getLogColor(log.type || 'default')} rounded-full h-8 w-8 mt-1 mr-4 flex-shrink-0 flex items-center justify-center text-white text-sm`}>
-                            {getLogIcon(log.type || 'default')}
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                                <p className="font-semibold text-gray-800 dark:text-gray-100">{log.action}</p>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
-                                    {log.type || 'system'}
-                                </span>
-                            </div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                by {log.user} on {new Date(log.timestamp).toLocaleString()}
-                            </p>
-                            {log.details && (
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{log.details}</p>
-                            )}
-                            {log.cost_estimation && (
-                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                                        Cost Estimation: {log.cost_estimation_currency === 'USD' ? '$' : '₹'}{log.cost_estimation}
-                                    </p>
-                                </div>
-                            )}
-                            {log.epr_status && (
-                                <div className="mt-2">
-                                    <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded">
-                                        EPR Status: {log.epr_status}
-                                    </span>
-                                </div>
-                            )}
-                            {log.quote_decision && (
-                                <div className="mt-2">
-                                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
-                                        log.quote_decision === 'approved' 
-                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                    }`}>
-                                        Quote: {log.quote_decision}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </li>
-                );
-            })}
         </div>
       </div>
     );
@@ -1048,7 +947,6 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                 <button onClick={() => setActiveTab('details')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Details</button>
                 <button onClick={() => setActiveTab('quote')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'quote' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Quote</button>
-                <button onClick={() => setActiveTab('timeline')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'timeline' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Comprehensive Timeline</button>
                 {(isAdmin || user.role === 'epr' || user.role === 'service') && <button onClick={() => setActiveTab('audit')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'audit' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Audit Log</button>}
             </nav>
         </div>
@@ -1056,7 +954,6 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         <div>
             {activeTab === 'details' && renderDetailsTab()}
             {activeTab === 'quote' && renderQuoteTab()}
-            {activeTab === 'timeline' && renderComprehensiveTimeline()}
             {(isAdmin || user.role === 'epr' || user.role === 'service') && activeTab === 'audit' && renderAuditLogTab()}
         </div>
 

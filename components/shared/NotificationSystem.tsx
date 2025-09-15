@@ -3,13 +3,14 @@ import { api } from '../../services/api';
 
 interface Notification {
   id: string;
-  type: 'payment' | 'status' | 'quote' | 'epr';
+  type: 'payment' | 'status' | 'quote' | 'epr' | 'complaint';
   title: string;
   message: string;
   timestamp: string;
   read: boolean;
-  serviceRequestId?: string;
-  paymentId?: string;
+  service_request_id?: string;
+  payment_id?: string;
+  customer_id: string;
 }
 
 interface NotificationSystemProps {
@@ -23,64 +24,81 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ user, onNotific
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // Simulate fetching notifications
-    fetchNotifications();
-    
-    // Set up polling for new notifications (in real app, use WebSocket or Server-Sent Events)
-    const interval = setInterval(fetchNotifications, 30000); // Check every 30 seconds
-    
-    return () => clearInterval(interval);
+    if (user?.role === 'customer' && user?.id) {
+      // Fetch initial notifications
+      fetchNotifications();
+      
+      // Set up real-time subscription for new notifications
+      const subscription = api.subscribeToCustomerNotifications(user.id, (payload) => {
+        console.log('Real-time notification received:', payload);
+        if (payload.eventType === 'INSERT') {
+          // New notification added
+          const newNotification = payload.new;
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        } else if (payload.eventType === 'UPDATE') {
+          // Notification updated (e.g., marked as read)
+          const updatedNotification = payload.new;
+          setNotifications(prev => 
+            prev.map(notification => 
+              notification.id === updatedNotification.id ? updatedNotification : notification
+            )
+          );
+          setUnreadCount(prev => 
+            prev - (payload.old.read === false && updatedNotification.read === true ? 1 : 0)
+          );
+        }
+      });
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
   }, [user]);
 
   const fetchNotifications = async () => {
+    if (user?.role !== 'customer' || !user?.id) return;
+    
     try {
-      // In a real app, this would fetch from your API
-      // For now, we'll simulate some notifications
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'payment',
-          title: 'Payment Received',
-          message: 'Customer John Doe has completed payment of ₹1,500 for service request #req-123',
-          timestamp: new Date().toISOString(),
-          read: false,
-          serviceRequestId: 'req-123',
-          paymentId: 'pay_123'
-        },
-        {
-          id: '2',
-          type: 'status',
-          title: 'Service Request Updated',
-          message: 'Service request #req-456 status changed to "Repair in Progress"',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          read: false,
-          serviceRequestId: 'req-456'
-        }
-      ];
-
-      setNotifications(mockNotifications);
-      setUnreadCount(mockNotifications.filter(n => !n.read).length);
+      const customerNotifications = await api.getCustomerNotifications(user.id);
+      setNotifications(customerNotifications);
+      setUnreadCount(customerNotifications.filter(n => !n.read).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      // Fallback to empty array if there's an error
+      setNotifications([]);
+      setUnreadCount(0);
     }
   };
 
-  const markAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === notificationId 
-          ? { ...notification, read: true }
-          : notification
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+  const markAsRead = async (notificationId: string) => {
+    try {
+      await api.markNotificationAsRead(notificationId);
+      setNotifications(prev => 
+        prev.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, read: true }))
-    );
-    setUnreadCount(0);
+  const markAllAsRead = async () => {
+    if (user?.role !== 'customer' || !user?.id) return;
+    
+    try {
+      await api.markAllNotificationsAsRead(user.id);
+      setNotifications(prev => 
+        prev.map(notification => ({ ...notification, read: true }))
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
   };
 
   const getNotificationIcon = (type: string) => {
@@ -93,6 +111,8 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ user, onNotific
         return '📄';
       case 'epr':
         return '🔧';
+      case 'complaint':
+        return '⚠️';
       default:
         return '🔔';
     }
@@ -108,6 +128,8 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ user, onNotific
         return 'text-purple-600 dark:text-purple-400';
       case 'epr':
         return 'text-orange-600 dark:text-orange-400';
+      case 'complaint':
+        return 'text-red-600 dark:text-red-400';
       default:
         return 'text-gray-600 dark:text-gray-400';
     }
@@ -124,6 +146,11 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ user, onNotific
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
+  // Only render for customers
+  if (user?.role !== 'customer') {
+    return null;
+  }
+
   return (
     <div className="relative">
       {/* Notification Bell */}
@@ -132,7 +159,7 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ user, onNotific
         className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828zM4 7h16v2H4V7z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM12 2c-1.1 0-2 .9-2 2v.29C7.12 4.84 5 7.87 5 11.29V16l-2 2v1h18v-1l-2-2v-4.71c0-3.42-2.12-6.45-5-6.99V4c0-1.1-.9-2-2-2zm-2 18c0 1.1.9 2 2 2s2-.9 2-2h-4z" />
         </svg>
         
         {/* Unread Badge */}

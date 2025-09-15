@@ -217,7 +217,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">EPR Cost Estimations Ready</h3>
               <div className="space-y-3">
-                {requests.filter(req => req.current_epr_status === 'Cost Estimation Preparation' && req.status === 'Awaiting Approval').map(request => (
+                {requests.filter(req => req.current_epr_status === 'Cost Estimation Preparation').map(request => (
                   <div key={request.id} className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <div className="flex justify-between items-start">
                       <div>
@@ -239,7 +239,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                     </div>
                   </div>
                 ))}
-                {requests.filter(req => req.current_epr_status === 'Cost Estimation Preparation' && req.status === 'Awaiting Approval').length === 0 && (
+                {requests.filter(req => req.current_epr_status === 'Cost Estimation Preparation').length === 0 && (
                   <p className="text-gray-500 dark:text-gray-400 text-center py-4">No cost estimations ready from EPR team</p>
                 )}
               </div>
@@ -272,6 +272,72 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                 {requests.filter(req => req.status === 'Diagnosis' && !req.current_epr_status).length === 0 && (
                   <p className="text-gray-500 dark:text-gray-400 text-center py-4">No requests ready for EPR team</p>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Quote Decisions */}
+          <div className="mt-6">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Customer Quote Decisions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Approved Quotes */}
+                <div>
+                  <h4 className="text-md font-medium text-green-600 dark:text-green-400 mb-3">✓ Approved Quotes</h4>
+                  <div className="space-y-2">
+                    {requests.filter(req => req.quote && req.quote.is_approved === true).map(request => (
+                      <div key={request.id} className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-gray-800 dark:text-white text-sm">Request #{request.id.slice(-8)}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-300">{request.customer_name}</p>
+                            <p className="text-xs text-green-600 dark:text-green-400">
+                              Amount: {request.quote?.currency === 'USD' ? '$' : '₹'}{request.quote?.total_cost}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setSelectedRequest(request)}
+                            className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded"
+                          >
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {requests.filter(req => req.quote && req.quote.is_approved === true).length === 0 && (
+                      <p className="text-gray-500 dark:text-gray-400 text-xs text-center py-2">No approved quotes</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rejected Quotes */}
+                <div>
+                  <h4 className="text-md font-medium text-red-600 dark:text-red-400 mb-3">✗ Rejected Quotes</h4>
+                  <div className="space-y-2">
+                    {requests.filter(req => req.quote && req.quote.is_approved === false).map(request => (
+                      <div key={request.id} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-gray-800 dark:text-white text-sm">Request #{request.id.slice(-8)}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-300">{request.customer_name}</p>
+                            <p className="text-xs text-red-600 dark:text-red-400">
+                              Amount: {request.quote?.currency === 'USD' ? '$' : '₹'}{request.quote?.total_cost}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setSelectedRequest(request)}
+                            className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
+                          >
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {requests.filter(req => req.quote && req.quote.is_approved === false).length === 0 && (
+                      <p className="text-gray-500 dark:text-gray-400 text-xs text-center py-2">No rejected quotes</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
