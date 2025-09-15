@@ -1,5 +1,6 @@
 import { AppUser, Role, ServiceRequest, Status, Complaint, EnrichedComplaint, Quote, Feedback, EPRStatus, EPRTimelineEntry } from '../types';
 import { supabase, supabaseAdmin } from './supabase';
+import { createPaymentOrder, verifyPaymentSignature, getPaymentDetails, refundPayment } from './razorpay';
 
 // ================================================================= //
 // Supabase API Service - Real database integration                  //
@@ -475,7 +476,18 @@ export const api = {
             
             const updatedAuditLog = [
                 ...(currentRequest.audit_log || []),
-                { timestamp: new Date().toISOString(), user: userEmail, action: `Status changed to ${status}` }
+                { 
+                    timestamp: new Date().toISOString(), 
+                    user: userEmail, 
+                    action: `Status changed to ${status}`,
+                    type: 'status_change',
+                    details: `Service request status updated from previous status to ${status}`,
+                    metadata: {
+                        new_status: status,
+                        previous_status: 'Unknown', // We don't have previous status in this context
+                        change_reason: 'Manual status update'
+                    }
+                }
             ];
             
             const { data: updatedRequest, error } = await supabase
@@ -532,7 +544,20 @@ export const api = {
             
             const updatedAuditLog = [
                 ...(currentRequest.audit_log || []),
-                { timestamp: new Date().toISOString(), user: userEmail, action: `Quote generated for $${newQuote.total_cost}` }
+                { 
+                    timestamp: new Date().toISOString(), 
+                    user: userEmail, 
+                    action: `Quote generated for ${newQuote.currency === 'USD' ? '$' : '₹'}${newQuote.total_cost}`,
+                    type: 'quote_generated',
+                    details: `New repair quote created with ${newQuote.items.length} items`,
+                    metadata: {
+                        quote_id: newQuote.id,
+                        total_cost: newQuote.total_cost,
+                        currency: newQuote.currency,
+                        item_count: newQuote.items.length,
+                        items: newQuote.items
+                    }
+                }
             ];
             
             const { data: updatedRequest, error: updateError } = await supabase
@@ -581,7 +606,20 @@ export const api = {
             
             const updatedAuditLog = [
                 ...(currentRequest.audit_log || []),
-                { timestamp: new Date().toISOString(), user: userEmail, action: `Quote ${isApproved ? 'Approved' : 'Declined'}` }
+                { 
+                    timestamp: new Date().toISOString(), 
+                    user: userEmail, 
+                    action: `Quote ${isApproved ? 'Approved' : 'Declined'}`,
+                    type: 'quote_decision',
+                    details: `Customer ${isApproved ? 'approved' : 'declined'} the repair quote`,
+                    metadata: {
+                        decision: isApproved ? 'approved' : 'declined',
+                        quote_id: 'Unknown', // We'll need to get this from the quote table
+                        quote_amount: 0, // We'll need to get this from the quote table
+                        currency: 'INR', // Default currency
+                        decision_maker: userEmail
+                    }
+                }
             ];
             
             const newStatus = isApproved ? 'Repair in Progress' : 'Cancelled';
@@ -781,7 +819,14 @@ export const api = {
                 epr_status: eprStatus,
                 cost_estimation: costEstimation,
                 cost_estimation_currency: costEstimationCurrency,
-                approval_decision: approvalDecision
+                approval_decision: approvalDecision,
+                metadata: {
+                    previous_epr_status: currentRequest.current_epr_status || 'Not Started',
+                    new_epr_status: eprStatus,
+                    epr_action_type: 'status_update',
+                    ...(costEstimation && { cost_estimation: costEstimation, cost_estimation_currency: costEstimationCurrency }),
+                    ...(approvalDecision && { approval_decision: approvalDecision })
+                }
             };
 
             // Get existing audit log or create new one
@@ -1016,6 +1061,138 @@ export const api = {
         } catch (error) {
             console.error('Error updating status after quote decision:', error);
             throw new Error('Failed to update status after quote decision');
+        }
+    },
+
+    // --- Payment Methods ---
+    async createPaymentOrder(requestId: string, quoteId: string, userEmail: string): Promise<any> {
+        try {
+            // Get the service request and quote details
+            const { data: request, error: requestError } = await supabase
+                .from('service_requests')
+                .select(`
+                    *,
+                    quotes (*)
+                `)
+                .eq('id', requestId)
+                .single();
+
+            if (requestError) throw requestError;
+
+            const quote = request.quotes?.[0];
+            if (!quote) {
+                throw new Error('Quote not found');
+            }
+
+            // Create Razorpay order
+            const receipt = `receipt_${requestId}_${Date.now()}`;
+            const razorpayOrder = await createPaymentOrder({
+                amount: quote.total_cost,
+                currency: quote.currency || 'INR',
+                receipt: receipt,
+                notes: {
+                    service_request_id: requestId,
+                    customer_name: request.customer_name,
+                    quote_id: quoteId
+                }
+            });
+
+            // Create payment record in database
+            const { data: payment, error: paymentError } = await supabase
+                .rpc('create_payment_record', {
+                    p_service_request_id: requestId,
+                    p_quote_id: quoteId,
+                    p_razorpay_order_id: razorpayOrder.id,
+                    p_amount: quote.total_cost,
+                    p_customer_name: request.customer_name,
+                    p_receipt: receipt,
+                    p_currency: quote.currency || 'INR',
+                    p_customer_email: request.customer_id, // Assuming customer_id is email
+                    p_customer_phone: null
+                });
+
+            if (paymentError) throw paymentError;
+
+            return razorpayOrder;
+        } catch (error) {
+            console.error('Error creating payment order:', error);
+            throw new Error('Failed to create payment order');
+        }
+    },
+
+    async verifyPayment(orderId: string, paymentId: string, signature: string, requestId: string, quoteId: string): Promise<boolean> {
+        try {
+            // Verify payment signature with Razorpay
+            const isValidSignature = verifyPaymentSignature(orderId, paymentId, signature);
+            
+            if (!isValidSignature) {
+                throw new Error('Invalid payment signature');
+            }
+
+            // Get payment details from Razorpay
+            const paymentDetails = await getPaymentDetails(paymentId);
+            
+            // Update payment status in database
+            const { error: updateError } = await supabase
+                .rpc('update_payment_status', {
+                    p_razorpay_payment_id: paymentId,
+                    p_status: 'captured',
+                    p_payment_method: paymentDetails.method || 'card',
+                    p_razorpay_response: {
+                        order_id: orderId,
+                        payment_id: paymentId,
+                        signature: signature,
+                        status: paymentDetails.status,
+                        method: paymentDetails.method,
+                        amount: paymentDetails.amount,
+                        currency: paymentDetails.currency,
+                        captured: paymentDetails.captured
+                    }
+                });
+
+            if (updateError) throw updateError;
+
+            return true;
+        } catch (error) {
+            console.error('Error verifying payment:', error);
+            throw new Error('Failed to verify payment');
+        }
+    },
+
+    async getPaymentDetails(paymentId: string): Promise<any> {
+        try {
+            const { data: payment, error } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('razorpay_payment_id', paymentId)
+                .single();
+
+            if (error) throw error;
+            return payment;
+        } catch (error) {
+            console.error('Error fetching payment details:', error);
+            throw new Error('Failed to fetch payment details');
+        }
+    },
+
+    async processRefund(paymentId: string, refundAmount?: number, reason?: string): Promise<boolean> {
+        try {
+            // Process refund through Razorpay
+            const refundResult = await refundPayment(paymentId, refundAmount, reason);
+            
+            // Update database with refund information
+            const { error } = await supabase
+                .rpc('process_payment_refund', {
+                    p_razorpay_payment_id: paymentId,
+                    p_refund_amount: refundAmount,
+                    p_refund_reason: reason || 'Customer request'
+                });
+
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('Error processing refund:', error);
+            throw new Error('Failed to process refund');
         }
     }
 };

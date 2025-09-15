@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import Spinner from '../shared/Spinner';
 import FeedbackForm from '../forms/FeedbackForm';
 import QuoteForm from '../forms/QuoteForm';
+import PaymentModal from '../payment/PaymentModal';
 
 const WORKFLOW_STATUSES: Status[] = Object.values(Status);
 
@@ -25,6 +26,19 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
+  
+  // Timeline state
+  const [timelineFilter, setTimelineFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  
+  // Audit log state
+  const [auditFilter, setAuditFilter] = useState('all');
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditSortOrder, setAuditSortOrder] = useState<'newest' | 'oldest'>('newest');
+  
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const isAdmin = user.role !== Role.Customer;
   const currentStepInfo = timelineSteps.indexOf(request.status);
@@ -61,6 +75,26 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = async (paymentId: string, orderId: string) => {
+    try {
+      // Refresh the request data to get updated payment status
+      const updatedRequest = await api.getServiceRequest(request.id);
+      if (updatedRequest) {
+        setRequest(updatedRequest);
+        onUpdate();
+      }
+      setShowPaymentModal(false);
+      alert('Payment successful! Your service request is now being processed.');
+    } catch (error: any) {
+      setError('Payment successful but failed to update request status. Please refresh the page.');
+    }
+  };
+
+  const handlePaymentError = (error: string) => {
+    setError(`Payment failed: ${error}`);
+    setShowPaymentModal(false);
   };
   
   const handleQuoteSubmitted = async () => {
@@ -275,6 +309,17 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                     {request.quote.is_approved === true && (
                         <div>
                             <p className="text-green-600 font-semibold mb-4">Quote Approved. Please proceed with payment.</p>
+                            {user.role === Role.Customer && !request.payment_completed && (
+                                <button
+                                    onClick={() => setShowPaymentModal(true)}
+                                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
+                                >
+                                    💳 Pay {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}
+                                </button>
+                            )}
+                            {request.payment_completed && (
+                                <p className="text-green-600 font-semibold">✅ Payment Completed</p>
+                            )}
                             {request.quote.payment_qr_code_url && <img src={request.quote.payment_qr_code_url} alt="Payment QR Code" className="mx-auto" />}
                         </div>
                     )}
@@ -304,7 +349,8 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         details: 'Customer submitted service request',
         status: 'Received',
         icon: '📝',
-        color: 'bg-gray-500'
+        color: 'bg-gray-500',
+        category: 'creation'
       }
     ];
 
@@ -322,7 +368,8 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
           cost_estimation_currency: entry.cost_estimation_currency,
           approval_decision: entry.approval_decision,
           icon: '🔧',
-          color: 'bg-blue-500'
+          color: 'bg-blue-500',
+          category: 'epr'
         });
       });
     }
@@ -338,7 +385,8 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         quote_amount: request.quote.total_cost,
         quote_currency: request.quote.currency,
         icon: '💰',
-        color: 'bg-green-500'
+        color: 'bg-green-500',
+        category: 'quote'
       });
 
       if (request.quote.is_approved !== null) {
@@ -350,19 +398,113 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
           details: `Customer ${request.quote.is_approved ? 'approved' : 'rejected'} the quote`,
           quote_decision: request.quote.is_approved ? 'approved' : 'rejected',
           icon: '👤',
-          color: 'bg-purple-500'
+          color: 'bg-purple-500',
+          category: 'customer_action'
         });
       }
     }
 
-    // Sort all entries by timestamp
-    const sortedTimeline = [...statusTimeline, ...allTimelineEntries].sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
+    // Combine and filter timeline entries
+    const combinedTimeline = [...statusTimeline, ...allTimelineEntries];
+    
+    // Apply filters
+    let filteredTimeline = combinedTimeline;
+    
+    if (timelineFilter !== 'all') {
+      filteredTimeline = filteredTimeline.filter(entry => entry.category === timelineFilter);
+    }
+    
+    if (searchTerm) {
+      filteredTimeline = filteredTimeline.filter(entry => 
+        entry.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.user.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Sort timeline entries
+    const sortedTimeline = filteredTimeline.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
 
     return (
       <div className='p-4'>
-        <h3 className="text-lg font-semibold mb-6 text-gray-700 dark:text-gray-200">Comprehensive Timeline</h3>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Comprehensive Timeline</h3>
+          <div className="flex items-center space-x-4">
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search timeline..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            {/* Filter */}
+            <select
+              value={timelineFilter}
+              onChange={(e) => setTimelineFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Activities</option>
+              <option value="creation">Creation</option>
+              <option value="epr">EPR Actions</option>
+              <option value="quote">Quotes</option>
+              <option value="customer_action">Customer Actions</option>
+            </select>
+            
+            {/* Sort Order */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+            
+            {/* Export Button */}
+            <button
+              onClick={() => {
+                const exportData = {
+                  requestId: request.id,
+                  customerName: request.customer_name,
+                  serialNumber: request.serial_number,
+                  exportDate: new Date().toISOString(),
+                  timeline: sortedTimeline.map(entry => ({
+                    timestamp: entry.timestamp,
+                    type: entry.type,
+                    action: entry.action,
+                    user: entry.user,
+                    details: entry.details,
+                    category: entry.category,
+                    ...(entry.cost_estimation && { cost_estimation: entry.cost_estimation, cost_estimation_currency: entry.cost_estimation_currency }),
+                    ...(entry.epr_status && { epr_status: entry.epr_status }),
+                    ...(entry.quote_amount && { quote_amount: entry.quote_amount, quote_currency: entry.quote_currency }),
+                    ...(entry.quote_decision && { quote_decision: entry.quote_decision })
+                  }))
+                };
+                
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `timeline-${request.id}-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+            >
+              Export Timeline
+            </button>
+          </div>
+        </div>
         <div className="relative">
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
           <div className="space-y-6">
@@ -432,11 +574,71 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     );
   };
 
-  const renderAuditLogTab = () => (
-    <div className='p-4'>
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200">Comprehensive Activity Log</h3>
-        <ul className="space-y-4">
-            {request.audit_log.slice().reverse().map((log, index) => {
+  const renderAuditLogTab = () => {
+    // Filter and sort audit log entries
+    let filteredAuditLog = request.audit_log || [];
+    
+    if (auditSearch) {
+      filteredAuditLog = filteredAuditLog.filter(log => 
+        log.action.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        log.user.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        (log.details && log.details.toLowerCase().includes(auditSearch.toLowerCase()))
+      );
+    }
+    
+    const sortedAuditLog = filteredAuditLog.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return auditSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+    
+    return (
+      <div className='p-4'>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Comprehensive Activity Log</h3>
+          <div className="flex items-center space-x-4">
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search audit log..."
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            {/* Sort Order */}
+            <select
+              value={auditSortOrder}
+              onChange={(e) => setAuditSortOrder(e.target.value as 'newest' | 'oldest')}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+            
+            {/* Export Button */}
+            <button
+              onClick={() => {
+                const dataStr = JSON.stringify(sortedAuditLog, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `audit-log-${request.id}-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            >
+              Export JSON
+            </button>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+            {sortedAuditLog.map((log, index) => {
                 const getLogIcon = (type: string) => {
                     switch (type) {
                         case 'epr_action':
@@ -510,9 +712,10 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                     </li>
                 );
             })}
-        </ul>
-    </div>
-  );
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-6 md:p-8 relative">
@@ -563,6 +766,16 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
 
       {showFeedbackForm && <FeedbackForm requestId={request.id} onClose={() => setShowFeedbackForm(false)} />}
       {showQuoteForm && <QuoteForm requestId={request.id} onClose={() => setShowQuoteForm(false)} onSubmitSuccess={handleQuoteSubmitted} />}
+      {showPaymentModal && request.quote && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          request={request}
+          quote={request.quote}
+          onPaymentSuccess={handlePaymentSuccess}
+          onPaymentError={handlePaymentError}
+        />
+      )}
     </div>
   );
 };

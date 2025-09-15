@@ -39,6 +39,17 @@ export interface AuditLogEntry {
   user: string;
   action: string;
   details?: string;
+  type?: string;
+  metadata?: {
+    [key: string]: any;
+  };
+  // EPR-specific fields
+  epr_status?: EPRStatus;
+  cost_estimation?: number;
+  cost_estimation_currency?: 'INR' | 'USD';
+  approval_decision?: 'approved' | 'declined';
+  // Quote-specific fields
+  quote_decision?: 'approved' | 'declined';
 }
 
 export interface EPRTimelineEntry {
@@ -84,6 +95,8 @@ export interface ServiceRequest {
   audit_log: AuditLogEntry[];
   epr_timeline?: EPRTimelineEntry[];
   current_epr_status?: EPRStatus;
+  payment_required?: boolean;
+  payment_completed?: boolean;
 }
 
 export interface Complaint {
