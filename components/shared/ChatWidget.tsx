@@ -97,15 +97,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
             const statusEmoji = getStatusEmoji(request.status);
             return `${statusEmoji} **Request ${requestId}**\n\n**Status:** ${request.status}\n**Product:** ${request.product_type}\n**Created:** ${new Date(request.created_at).toLocaleDateString()}\n\n${getStatusDescription(request.status)}`;
           } else {
-            return "❌ Sorry, I couldn't find a request with that ID associated with your account.";
+            return "Sorry, I couldn't find a request with that ID associated with your account.";
           }
         } catch (error) {
-          return "❌ Sorry, I couldn't find a request with that ID. Please check the ID and try again.";
+          return "Sorry, I couldn't find a request with that ID. Please check the ID and try again.";
         }
       } else {
         // Show all user's requests
         if (requests.length > 0) {
-          let response = "📋 **Your Service Requests:**\n\n";
+          let response = "**Your Service Requests:**\n\n";
           requests.slice(0, 5).forEach((req, index) => {
             const statusEmoji = getStatusEmoji(req.status);
             response += `${index + 1}. ${statusEmoji} **${req.id}** - ${req.status}\n   Product: ${req.product_type}\n   Created: ${new Date(req.created_at).toLocaleDateString()}\n\n`;
@@ -113,61 +113,61 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
           if (requests.length > 5) {
             response += `... and ${requests.length - 5} more requests.`;
           }
-          response += "\n💡 To get detailed status, type: 'status [request-id]'";
+          response += "\nTo get detailed status, type: 'status [request-id]'";
           return response;
         } else {
-          return "📭 You don't have any service requests yet. Would you like help submitting a new request?";
+          return "You don't have any service requests yet. Would you like help submitting a new request?";
         }
       }
     }
     
     // New request help
     if (lowerCaseInput.includes('new request') || lowerCaseInput.includes('submit') || lowerCaseInput.includes('create')) {
-      return "🆕 **To submit a new service request:**\n\n1. Go to your Customer Dashboard\n2. Click 'Submit New Request'\n3. Fill out the form with:\n   • Product details and serial number\n   • Problem description\n   • Your address\n   • Preferred service center\n   • Photos of the issue\n\n💡 **Tip:** Use the QR scanner to quickly capture your serial number!";
+      return "**To submit a new service request:**\n\n1. Go to your Customer Dashboard\n2. Click 'Submit New Request'\n3. Fill out the form with:\n   • Product details and serial number\n   • Problem description\n   • Your address\n   • Preferred service center\n   • Photos of the issue\n\n**Tip:** Use the QR scanner to quickly capture your serial number!";
     }
     
     // Warranty questions
     if (lowerCaseInput.includes('warranty') || lowerCaseInput.includes('covered')) {
-      return "🛡️ **Warranty Coverage:**\n\n• **Energizer Products:** 1-2 years\n• **Power Adapters:** 1 year\n• **Gate Motor Controllers:** 2 years\n\n✅ **Covered:** Manufacturing defects, component failures\n❌ **Not Covered:** Physical damage, water damage, misuse\n\n💡 Warranty status is verified during diagnosis. No charges for warranty repairs!";
+      return "**Warranty Coverage:**\n\n• **Energizer Products:** 1-2 years\n• **Power Adapters:** 1 year\n• **Gate Motor Controllers:** 2 years\n\n**Covered:** Manufacturing defects, component failures\n**Not Covered:** Physical damage, water damage, misuse\n\nWarranty status is verified during diagnosis. No charges for warranty repairs!";
     }
     
     // Repair time questions
     if (lowerCaseInput.includes('how long') || lowerCaseInput.includes('time') || lowerCaseInput.includes('duration')) {
-      return "⏱️ **Repair Timeframes:**\n\n• **Simple repairs:** 1-3 business days\n• **Moderate repairs:** 3-7 business days\n• **Complex repairs:** 7-14 business days\n\n📧 You'll receive email notifications at each stage:\nReceived → Diagnosis → Awaiting Approval → Repair → Quality Check → Dispatched → Completed";
+      return "**Repair Timeframes:**\n\n• **Simple repairs:** 1-3 business days\n• **Moderate repairs:** 3-7 business days\n• **Complex repairs:** 7-14 business days\n\nYou'll receive email notifications at each stage:\nReceived → Diagnosis → Awaiting Approval → Repair → Quality Check → Dispatched → Completed";
     }
     
     // Service centers
     if (lowerCaseInput.includes('service center') || lowerCaseInput.includes('location') || lowerCaseInput.includes('where')) {
-      return "🏢 **Our Service Centers:**\n\n• **Maharashtra, India** - Central processing\n• **Gujarat, India** - Western region\n• **Dubai, UAE** - Middle East operations\n\n🌍 Choose the center closest to you for faster processing. All centers maintain the same quality standards!";
+      return "**Our Service Centers:**\n\n• **Maharashtra, India** - Central processing\n• **Gujarat, India** - Western region\n• **Dubai, UAE** - Middle East operations\n\nChoose the center closest to you for faster processing. All centers maintain the same quality standards!";
     }
     
     // Payment questions
     if (lowerCaseInput.includes('payment') || lowerCaseInput.includes('cost') || lowerCaseInput.includes('price') || lowerCaseInput.includes('charge')) {
-      return "💳 **Payment Information:**\n\n• **Warranty repairs:** FREE\n• **Out-of-warranty:** Quote provided after diagnosis\n• **Payment methods:** Credit/Debit cards, Bank transfer, Digital wallets\n• **When to pay:** After approving the quote, before repair begins\n\n💰 We offer competitive rates and 90-day warranty on all repairs!";
+      return "**Payment Information:**\n\n• **Warranty repairs:** FREE\n• **Out-of-warranty:** Quote provided after diagnosis\n• **Payment methods:** Credit/Debit cards, Bank transfer, Digital wallets\n• **When to pay:** After approving the quote, before repair begins\n\nWe offer competitive rates and 90-day warranty on all repairs!";
     }
     
     // Technical support
     if (lowerCaseInput.includes('technical') || lowerCaseInput.includes('help') || lowerCaseInput.includes('support') || lowerCaseInput.includes('troubleshoot')) {
-      return "🔧 **Technical Support:**\n\nI can help with:\n• Product troubleshooting\n• Installation guidance\n• General product questions\n• Service request assistance\n\n📞 For urgent issues, contact our support team directly.\n💬 Describe your specific problem and I'll do my best to help!";
+      return "**Technical Support:**\n\nI can help with:\n• Product troubleshooting\n• Installation guidance\n• General product questions\n• Service request assistance\n\nFor urgent issues, contact our support team directly.\nDescribe your specific problem and I'll do my best to help!";
     }
     
     // Contact information
     if (lowerCaseInput.includes('contact') || lowerCaseInput.includes('phone') || lowerCaseInput.includes('email') || lowerCaseInput.includes('reach')) {
-      return "📞 **Contact Information:**\n\n• **Chat Support:** Available 24/7 (this chat)\n• **Email:** support@a1fenceservices.com\n• **Phone:** +1-800-A1-FENCE\n• **Hours:** Mon-Fri 8AM-6PM, Sat 9AM-4PM\n\n💬 I'm here to help right now! What's your question?";
+      return "**Contact Information:**\n\n• **Chat Support:** Available 24/7 (this chat)\n• **Email:** support@a1fenceservices.com\n• **Phone:** +1-800-A1-FENCE\n• **Hours:** Mon-Fri 8AM-6PM, Sat 9AM-4PM\n\nI'm here to help right now! What's your question?";
     }
     
     // FAQ reference
     if (lowerCaseInput.includes('faq') || lowerCaseInput.includes('questions') || lowerCaseInput.includes('common')) {
-      return "❓ **Frequently Asked Questions:**\n\nI can answer questions about:\n• Service request process\n• Warranty coverage\n• Repair timelines\n• Payment options\n• Technical support\n• Service centers\n\n💡 Try asking: 'How do I submit a request?' or 'What's covered under warranty?'";
+      return "**Frequently Asked Questions:**\n\nI can answer questions about:\n• Service request process\n• Warranty coverage\n• Repair timelines\n• Payment options\n• Technical support\n• Service centers\n\nTry asking: 'How do I submit a request?' or 'What's covered under warranty?'";
     }
     
     // Thank you responses
     if (lowerCaseInput.includes('thank') || lowerCaseInput.includes('thanks')) {
-      return "😊 You're very welcome! I'm here whenever you need help with A-1 Fence Services. Is there anything else I can assist you with?";
+      return "You're very welcome! I'm here whenever you need help with A-1 Fence Services. Is there anything else I can assist you with?";
     }
     
     // Default response with helpful suggestions
-    return `🤔 I'm not sure I understand that question. Here's how I can help:\n\n• **Check status:** "status [request-id]" or just "status"\n• **New request:** "How do I submit a new request?"\n• **Warranty:** "What's covered under warranty?"\n• **Timeline:** "How long does repair take?"\n• **Support:** "I need technical help"\n\n💬 Try rephrasing your question or ask about one of these topics!`;
+    return `I'm not sure I understand that question. Here's how I can help:\n\n• **Check status:** "status [request-id]" or just "status"\n• **New request:** "How do I submit a new request?"\n• **Warranty:** "What's covered under warranty?"\n• **Timeline:** "How long does repair take?"\n• **Support:** "I need technical help"\n\nTry rephrasing your question or ask about one of these topics!`;
   };
 
   const getStatusEmoji = (status: string): string => {
@@ -175,11 +175,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
       'Received': '📥',
       'Diagnosis': '🔍',
       'Awaiting Approval': '⏳',
-      'Repair in Progress': '🔧',
-      'Quality Check': '✅',
+      'Repair in Progress': '⚙',
+      'Quality Check': '✓',
       'Dispatched': '📦',
-      'Completed': '🎉',
-      'Cancelled': '❌'
+      'Completed': '✓',
+      'Cancelled': '✗'
     };
     return statusEmojis[status] || '📋';
   };

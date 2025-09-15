@@ -90,12 +90,12 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
   const fetchPayments = async () => {
     try {
       setPaymentLoading(true);
-      console.log('🔍 Fetching payments...');
+      console.log('Fetching payments...');
       const paymentData = await api.getAllPayments();
-      console.log('📊 Payment data received:', paymentData);
+      console.log('Payment data received:', paymentData);
       setPayments(paymentData);
     } catch (error) {
-      console.error('❌ Error fetching payments:', error);
+      console.error('Error fetching payments:', error);
     } finally {
       setPaymentLoading(false);
     }
@@ -169,18 +169,18 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-2xl p-8 text-white">
+      <div className="relative overflow-hidden bg-gradient-to-r from-red-800 via-red-700 to-amber-800 rounded-2xl p-8 text-white">
         <div className="absolute inset-0 bg-black opacity-10"></div>
         <div className="relative z-10">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold mb-2">Payment Analytics</h2>
-              <p className="text-blue-100 text-lg">Track and monitor all payment activities</p>
+              <p className="text-red-100 text-lg">Track and monitor all payment activities</p>
             </div>
             <div className="flex items-center space-x-4">
               {/* Time Range Selector */}
               <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-blue-100">Time Range:</label>
+                <label className="text-sm font-medium text-red-100">Time Range:</label>
                 <select
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value as 'today' | 'week' | 'month' | 'year')}
@@ -210,12 +210,12 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Payments */}
-        <div className="group relative bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-200/50 dark:border-blue-700/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="group relative bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-200/50 dark:border-red-700/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <div className="relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
@@ -230,12 +230,12 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
         </div>
 
         {/* Total Amount */}
-        <div className="group relative bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-green-200/50 dark:border-green-700/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="group relative bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-amber-200/50 dark:border-amber-700/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <div className="relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                   </svg>
@@ -250,12 +250,12 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
         </div>
 
         {/* Today's Payments */}
-        <div className="group relative bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-purple-200/50 dark:border-purple-700/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="group relative bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800/20 dark:to-red-700/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-300/50 dark:border-red-600/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <div className="relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-red-600 to-red-700 rounded-xl shadow-lg">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -270,12 +270,12 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
         </div>
 
         {/* Pending Payments */}
-        <div className="group relative bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-amber-200/50 dark:border-amber-700/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="group relative bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-yellow-200/50 dark:border-yellow-700/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <div className="relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -294,11 +294,11 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
       {/* Monthly Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* This Month */}
-        <div className="group relative bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-indigo-200/50 dark:border-indigo-700/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="group relative bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-200/50 dark:border-red-700/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <div className="relative">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-red-500 to-red-600 rounded-lg">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -308,22 +308,22 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                 <span className="text-gray-600 dark:text-gray-300 font-medium">Payments</span>
-                <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{stats.monthlyPayments}</span>
+                <span className="text-xl font-bold text-red-600 dark:text-red-400">{stats.monthlyPayments}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                 <span className="text-gray-600 dark:text-gray-300 font-medium">Amount</span>
-                <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(stats.monthlyAmount)}</span>
+                <span className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(stats.monthlyAmount)}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Today */}
-        <div className="group relative bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-emerald-200/50 dark:border-emerald-700/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="group relative bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-amber-200/50 dark:border-amber-700/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <div className="relative">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -333,11 +333,11 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ user }) => {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                 <span className="text-gray-600 dark:text-gray-300 font-medium">Payments</span>
-                <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{stats.todayPayments}</span>
+                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{stats.todayPayments}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                 <span className="text-gray-600 dark:text-gray-300 font-medium">Amount</span>
-                <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(stats.todayAmount)}</span>
+                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(stats.todayAmount)}</span>
               </div>
             </div>
           </div>

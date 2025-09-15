@@ -55,22 +55,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // Debug payment status changes
   useEffect(() => {
-    console.log('🔍 Payment status changed to:', paymentStatus);
+    console.log('Payment status changed to:', paymentStatus);
   }, [paymentStatus]);
 
   const handlePayment = async () => {
-    console.log('🚀 Starting payment process...');
+    console.log('Starting payment process...');
     setLoading(true);
     setError(null);
 
     try {
-      console.log('📞 Calling createPaymentOrder API...');
+      console.log('Calling createPaymentOrder API...');
       // Create order using API
       const orderData = await api.createPaymentOrder(request.id, quote.id, request.customer_id);
-      console.log('✅ Order created:', orderData);
+      console.log('Order created:', orderData);
 
       // Simulate payment processing with dummy data
-      console.log('🧪 Starting dummy payment flow...');
+      console.log('Starting dummy payment flow...');
       
       // Simulate payment gateway loading
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -82,13 +82,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         razorpay_signature: `dummy_signature_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       };
 
-      console.log('🧪 Dummy payment response:', dummyPaymentResponse);
+      console.log('Dummy payment response:', dummyPaymentResponse);
       
       setPaymentStatus(PaymentStatus.CAPTURED);
-      console.log('🔧 Payment status set to:', PaymentStatus.CAPTURED);
+      console.log('Payment status set to:', PaymentStatus.CAPTURED);
       
       // Verify payment using API
-      console.log('🔍 Verifying payment...');
+      console.log('Verifying payment...');
       const isVerified = await api.verifyPayment(
         dummyPaymentResponse.razorpay_order_id,
         dummyPaymentResponse.razorpay_payment_id,
@@ -96,33 +96,33 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         request.id,
         quote.id
       );
-      console.log('✅ Payment verification result:', isVerified);
+      console.log('Payment verification result:', isVerified);
 
       if (isVerified) {
         setPaymentId(dummyPaymentResponse.razorpay_payment_id);
         setOrderId(dummyPaymentResponse.razorpay_order_id);
         
         // Show success message immediately
-        console.log('✅ Payment verification successful!');
-        console.log('✅ Payment status set to CAPTURED');
-        console.log('✅ Payment ID set:', dummyPaymentResponse.razorpay_payment_id);
-        console.log('✅ Order ID set:', dummyPaymentResponse.razorpay_order_id);
+        console.log('Payment verification successful!');
+        console.log('Payment status set to CAPTURED');
+        console.log('Payment ID set:', dummyPaymentResponse.razorpay_payment_id);
+        console.log('Order ID set:', dummyPaymentResponse.razorpay_order_id);
         
         // Don't call success callback immediately - let the user see the success message first
         // onPaymentSuccess(dummyPaymentResponse.razorpay_payment_id, dummyPaymentResponse.razorpay_order_id);
         
-        console.log('✅ Dummy payment completed successfully!');
+        console.log('Dummy payment completed successfully!');
       } else {
         throw new Error('Payment verification failed');
       }
 
     } catch (error: any) {
-      console.error('❌ Payment failed with error:', error);
+      console.error('Payment failed with error:', error);
       setError(error.message);
       onPaymentError(error.message);
-      console.error('❌ Dummy payment failed:', error);
+      console.error('Dummy payment failed:', error);
     } finally {
-      console.log('🏁 Payment process finished, setting loading to false');
+      console.log('Payment process finished, setting loading to false');
       setLoading(false);
     }
   };
@@ -134,7 +134,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-            🧪 Test Payment for Quote Approval
+            Test Payment for Quote Approval
           </h2>
           <button
             onClick={onClose}
@@ -199,12 +199,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           <div className="mb-4 p-4 rounded-lg">
             {paymentStatus === PaymentStatus.CANCELLED && (
               <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
-                ⚠️ Payment was cancelled
+                Payment was cancelled
               </div>
             )}
             {paymentStatus === PaymentStatus.FAILED && (
               <div className="bg-red-100 border border-red-400 text-red-700 rounded">
-                ❌ Payment failed. Please try again.
+                Payment failed. Please try again.
               </div>
             )}
           </div>
@@ -230,7 +230,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                   <span className="ml-2">Processing...</span>
                 </>
               ) : (
-                `🧪 Test Pay ${quote.currency === 'USD' ? '$' : '₹'}${quote.total_cost}`
+                `Test Pay ${quote.currency === 'USD' ? '$' : '₹'}${quote.total_cost}`
               )}
             </button>
           </div>
@@ -238,7 +238,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
         {/* Payment Security Notice */}
         <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
-          <p>🧪 Test payment environment - No real money will be charged</p>
+          <p>Test payment environment - No real money will be charged</p>
           <p>This is a dummy payment flow for testing purposes</p>
           <p className="mt-2 text-red-500">DEBUG: Payment Status = {paymentStatus || 'null'}</p>
         </div>
@@ -246,7 +246,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       {/* Payment Success Content */}
       {(paymentStatus === PaymentStatus.CAPTURED || paymentStatus === 'captured') && (
-        console.log('🎉 Rendering success message section! Payment status:', paymentStatus) || true) && (
+        console.log('Rendering success message section! Payment status:', paymentStatus) || true) && (
         <div className="mt-6 p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
           <div className="text-center">
             <div className="flex items-center justify-center mb-4">

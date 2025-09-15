@@ -106,16 +106,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
             <button onClick={() => setActiveTab('analytics')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'analytics' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-              📊 Analytics
+              Analytics
             </button>
             <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-              📋 Service Requests
+              Service Requests
             </button>
             <button onClick={() => setActiveTab('complaints')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'complaints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Customer Complaints <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-red-100 text-red-800 rounded-full">{complaints.filter(c => !c.is_resolved).length}</span>
             </button>
             <button onClick={() => setActiveTab('payment-stats')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'payment-stats' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-              💳 Payment Management & Stats
+              Payment Management & Stats
             </button>
             {user.role === Role.Service && (
               <button onClick={() => setActiveTab('epr-integration')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'epr-integration' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
@@ -229,7 +229,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                       <div>
                         <p className="font-medium text-gray-800 dark:text-white">Request #{request.id.slice(-8)}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-300">{request.customer_name}</p>
-                        <p className="text-sm text-blue-600 dark:text-blue-400">💰 Cost Estimation Ready</p>
+                        <p className="text-sm text-blue-600 dark:text-blue-400">Cost Estimation Ready</p>
                         {request.epr_timeline && request.epr_timeline.length > 0 && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Cost Estimation: {request.epr_timeline[request.epr_timeline.length - 1]?.cost_estimation_currency === 'USD' ? '$' : '₹'}{request.epr_timeline[request.epr_timeline.length - 1]?.cost_estimation}
@@ -261,7 +261,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                       <div>
                         <p className="font-medium text-gray-800 dark:text-white">Request #{request.id.slice(-8)}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-300">{request.customer_name}</p>
-                        <p className="text-sm text-orange-600 dark:text-orange-400">🔧 Ready for EPR Assessment</p>
+                        <p className="text-sm text-orange-600 dark:text-orange-400">Ready for EPR Assessment</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           Status: {request.status}
                         </p>
@@ -363,7 +363,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               <EPRTimeline 
                 request={selectedRequest} 
                 user={user}
-                onStatusUpdate={() => {}} // Read-only for service team
+                onStatusUpdate={async () => {}} // Read-only for service team
                 onBack={() => setSelectedRequest(null)}
               />
             </div>

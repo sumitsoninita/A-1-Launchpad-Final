@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ServiceRequest, Role, Status, AppUser, AuditLogEntry, Quote } from '../../types';
 import { api } from '../../services/api';
+import { supabase } from '../../services/supabase';
 import Spinner from '../shared/Spinner';
 import FeedbackForm from '../forms/FeedbackForm';
 import QuoteForm from '../forms/QuoteForm';
@@ -55,11 +56,21 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         const updatedRequest = await api.updateRequestStatus(request.id, newStatus, user.email);
         setRequest(updatedRequest); // Update local state to reflect changes immediately
         onUpdate(); // Propagate update to parent
+
+        // Create notification for customer about status update
+        await api.createNotification({
+          type: 'status',
+          title: 'Status Update',
+          message: `Your service request ${request.id.slice(-8)} status has been updated to: ${newStatus}`,
+          customer_id: request.customer_id,
+          service_request_id: request.id
+        });
+
         alert('Status updated successfully!');
     } catch (err: any) {
         setError(err.message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
   
@@ -84,17 +95,47 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
 
   const handlePaymentSuccess = async (paymentId: string, orderId: string) => {
     try {
-      // Refresh the request data to get updated payment status
-      const updatedRequest = await api.getServiceRequest(request.id);
+      // Update the service request to mark payment as completed
+      const { data: updatedRequest, error: updateError } = await supabase
+        .from('service_requests')
+        .update({ 
+          payment_completed: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', request.id)
+        .select(`
+          *,
+          quotes (*)
+        `)
+        .single();
+
+      if (updateError) {
+        console.error('Error updating payment status:', updateError);
+        throw updateError;
+      }
+
       if (updatedRequest) {
-        setRequest(updatedRequest);
+        setRequest({
+          ...updatedRequest,
+          quote: updatedRequest.quotes?.[0] || null
+        });
         onUpdate();
       }
       
-      // Don't close the modal - let the user see the success message and download receipt
-      console.log('✅ Payment successful! Payment ID:', paymentId, 'Order ID:', orderId);
+      // Create payment success notification
+      await api.createNotification({
+        type: 'payment',
+        title: 'Payment Successful',
+        message: `Your payment of ${request.quote?.currency === 'USD' ? '$' : '₹'}${request.quote?.total_cost} has been processed successfully.`,
+        customer_id: request.customer_id,
+        service_request_id: request.id,
+        payment_id: paymentId
+      });
+      
+      console.log('Payment successful! Payment ID:', paymentId, 'Order ID:', orderId);
       
     } catch (error: any) {
+      console.error('Error in payment success handler:', error);
       setError('Payment successful but failed to update request status. Please refresh the page.');
     }
   };
@@ -112,11 +153,11 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     setPaymentError('');
     
     try {
-      console.log('🚀 Starting inline payment process...');
+      console.log('Starting inline payment process...');
       
       // Create order using API
-      const orderData = await api.createPaymentOrder(request.id, request.quote.id, request.customer_email || request.customer_id);
-      console.log('✅ Order created:', orderData);
+      const orderData = await api.createPaymentOrder(request.id, request.quote.id, request.customer_id);
+      console.log('Order created:', orderData);
       
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -128,7 +169,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         razorpay_signature: `dummy_signature_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       };
       
-      console.log('🧪 Dummy payment response:', dummyPaymentResponse);
+      console.log('Dummy payment response:', dummyPaymentResponse);
       
       // Verify payment using API
       const isVerified = await api.verifyPayment(
@@ -140,24 +181,27 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
       );
       
       if (isVerified) {
+        console.log('Payment verification successful');
         setPaymentId(dummyPaymentResponse.razorpay_payment_id);
         setOrderId(dummyPaymentResponse.razorpay_order_id);
         setPaymentCompleted(true);
         
-        // Update the request data
+        // Update the request data to get the latest payment status
+        console.log('🔄 Refreshing request data...');
         const updatedRequest = await api.getServiceRequestById(request.id);
         if (updatedRequest) {
+          console.log('Request data refreshed:', updatedRequest.payment_completed);
           setRequest(updatedRequest);
           onUpdate();
         }
         
-        console.log('✅ Inline payment completed successfully!');
+        console.log('Inline payment completed successfully!');
       } else {
         throw new Error('Payment verification failed');
       }
       
     } catch (error: any) {
-      console.error('❌ Inline payment failed:', error);
+      console.error('Inline payment failed:', error);
       setPaymentError(error.message);
     } finally {
       setPaymentInProgress(false);
@@ -182,7 +226,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
           setOrderId(payload.new.razorpay_order_id);
           
           // Refresh request data
-          api.getServiceRequest(request.id).then(updatedRequest => {
+          api.getServiceRequestById(request.id).then(updatedRequest => {
             if (updatedRequest) {
               setRequest(updatedRequest);
               onUpdate();
@@ -240,6 +284,15 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
             // Then update status to "Awaiting Approval" since quote is ready
             const finalRequest = await api.updateStatusToAwaitingApproval(request.id, user.email);
             setRequest(finalRequest);
+
+            // Create notification for customer about quote
+            await api.createNotification({
+              type: 'quote',
+              title: 'Repair Quote Ready',
+              message: `Your repair quote for request ${request.id.slice(-8)} is ready for review. Amount: ${updatedRequest.quote?.currency === 'USD' ? '$' : '₹'}${updatedRequest.quote?.total_cost}`,
+              customer_id: request.customer_id,
+              service_request_id: request.id
+            });
         }
         onUpdate();
     } catch (err: any) {
@@ -515,7 +568,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Online Payment */}
                                         <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                                            <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">💳 Online Payment</h4>
+                                            <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Online Payment</h4>
                                             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                                                 Pay securely using our test payment gateway. No real money will be charged.
                                             </p>
@@ -527,7 +580,22 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                                                 </div>
                                             )}
                                             
-                                            {user.role === Role.Customer && !request.payment_completed ? (
+                                            {/* Payment Status Display */}
+                                            {request.payment_completed ? (
+                                                <div className="text-center">
+                                                    <div className="inline-flex items-center px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-full">
+                                                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                        Payment Completed
+                                                    </div>
+                                                    {user.role !== Role.Customer && (
+                                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                                                            Customer has successfully paid for this service request
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : user.role === Role.Customer ? (
                                                 <button
                                                     onClick={handleInlinePayment}
                                                     disabled={paymentInProgress}
@@ -543,22 +611,21 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                                                             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                                             </svg>
-                                                            🧪 Test Pay {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}
+                                                            Test Pay {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}
                                                         </>
                                                     )}
                                                 </button>
-                                            ) : request.payment_completed ? (
-                                                <div className="text-center">
-                                                    <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full">
-                                                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                        </svg>
-                                                        Payment Completed
-                                                    </div>
-                                                </div>
                                             ) : (
-                                                <div className="text-center text-gray-500 dark:text-gray-400">
-                                                    Payment option not available
+                                                <div className="text-center">
+                                                    <div className="inline-flex items-center px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-full">
+                                                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                        </svg>
+                                                        ⏳ Payment Pending
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                                                        Customer needs to complete payment before repair can proceed
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
@@ -643,7 +710,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         user: request.customer_name,
         details: 'Customer submitted service request',
         status: 'Received',
-        icon: '📝',
+        icon: '📄',
         color: 'bg-gray-500',
         category: 'creation'
       }
@@ -662,7 +729,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
           cost_estimation: entry.cost_estimation,
           cost_estimation_currency: entry.cost_estimation_currency,
           approval_decision: entry.approval_decision,
-          icon: '🔧',
+          icon: '⚙',
           color: 'bg-blue-500',
           category: 'epr'
         });
@@ -679,7 +746,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         details: `Quote generated with total cost: ${request.quote.currency === 'USD' ? '$' : '₹'}${request.quote.total_cost}`,
         quote_amount: request.quote.total_cost,
         quote_currency: request.quote.currency,
-        icon: '💰',
+        icon: '$',
         color: 'bg-green-500',
         category: 'quote'
       });
@@ -709,7 +776,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
           user: log.user,
           details: log.details,
           metadata: log.metadata,
-          icon: log.type === 'epr_action' ? '🔧' : log.type === 'service_action' ? '⚙️' : log.type === 'customer_action' ? '👤' : '📝',
+          icon: log.type === 'epr_action' ? '⚙' : log.type === 'service_action' ? '⚙' : log.type === 'customer_action' ? '👤' : '📄',
           color: log.type === 'epr_action' ? 'bg-blue-500' : log.type === 'service_action' ? 'bg-green-500' : log.type === 'customer_action' ? 'bg-purple-500' : 'bg-primary-500',
           category: log.type || 'audit'
         });

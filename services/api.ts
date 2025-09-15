@@ -713,7 +713,7 @@ export const api = {
                 .from('complaints')
                 .select(`
                     *,
-                    service_requests!inner (
+                    service_requests (
                         customer_name,
                         product_type,
                         serial_number,
@@ -727,7 +727,7 @@ export const api = {
             // Enrich complaints with request details
             const enrichedComplaints = complaintsList?.map(comp => ({
                 ...comp,
-                customer_name: comp.service_requests?.customer_name || 'N/A',
+                customer_name: comp.service_requests?.customer_name || comp.customer_name || 'N/A',
                 product_type: comp.service_requests?.product_type,
                 serial_number: comp.service_requests?.serial_number || 'N/A',
                 request_status: comp.service_requests?.status || 'N/A'
@@ -760,7 +760,7 @@ export const api = {
                 .from('feedback')
                 .select(`
                     *,
-                    service_requests!inner (
+                    service_requests (
                         customer_name,
                         product_type,
                         serial_number
@@ -1077,7 +1077,7 @@ export const api = {
     },
 
     // --- Payment Methods ---
-    async createPaymentOrder(requestId: string, quoteId: string, userEmail: string): Promise<any> {
+    async createPaymentOrder(requestId: string, quoteId: string, customerId: string): Promise<any> {
         try {
             // Get the service request and quote details
             const { data: request, error: requestError } = await supabase
@@ -1109,16 +1109,24 @@ export const api = {
                 }
             });
 
-            // Create payment record using the simplified RPC function
-            const { data: paymentId, error: paymentError } = await supabase
-                .rpc('create_simple_payment', {
-                    p_service_request_id: requestId,
-                    p_quote_id: quoteId,
-                    p_amount: quote.total_cost,
-                    p_customer_email: request.customer_id, // Assuming customer_id is email
-                    p_customer_name: request.customer_name,
-                    p_razorpay_order_id: razorpayOrder.id
-                });
+            // Create payment record directly instead of using RPC function
+            const paymentId = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+            
+            const { data: newPayment, error: paymentError } = await supabase
+                .from('payments')
+                .insert({
+                    id: paymentId,
+                    service_request_id: requestId,
+                    quote_id: quoteId,
+                    customer_id: request.customer_id,
+                    customer_name: request.customer_name,
+                    amount: quote.total_cost,
+                    currency: quote.currency || 'INR',
+                    status: 'pending',
+                    razorpay_order_id: razorpayOrder.id
+                })
+                .select()
+                .single();
 
             if (paymentError) {
                 console.error('Payment creation error:', paymentError);
@@ -1148,7 +1156,7 @@ export const api = {
             // Get the payment record ID from the order ID
             const { data: paymentRecord, error: fetchError } = await supabase
                 .from('payments')
-                .select('id')
+                .select('id, customer_id, amount, currency')
                 .eq('razorpay_order_id', orderId)
                 .single();
 
@@ -1157,17 +1165,57 @@ export const api = {
                 throw new Error('Payment record not found');
             }
 
-            // Update payment status using the simplified RPC function
+            // Update payment status directly
             const { data: updateSuccess, error: updateError } = await supabase
-                .rpc('update_payment_status', {
-                    p_payment_id: paymentRecord.id,
-                    p_status: 'captured',
-                    p_razorpay_payment_id: paymentId
-                });
+                .from('payments')
+                .update({
+                    status: 'captured',
+                    razorpay_payment_id: paymentId,
+                    updated_at: new Date().toISOString(),
+                    metadata: {
+                        last_changed_by: 'system',
+                        change_reason: 'Payment verified',
+                        status_changed_at: new Date().toISOString()
+                    }
+                })
+                .eq('id', paymentRecord.id)
+                .select();
 
             if (updateError || !updateSuccess) {
                 console.error('Payment status update error:', updateError);
                 throw new Error('Failed to update payment status');
+            }
+
+            // Update service request to mark payment as completed
+            const { data: serviceRequestUpdate, error: serviceRequestError } = await supabase
+                .from('service_requests')
+                .update({
+                    payment_completed: true,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId)
+                .select();
+
+            if (serviceRequestError) {
+                console.error('Service request payment status update error:', serviceRequestError);
+                // Don't throw error here as payment is already verified
+            } else {
+                console.log('Service request payment status updated successfully');
+                
+                // Create payment success notification
+                try {
+                    await this.createNotification({
+                        type: 'payment',
+                        title: 'Payment Successful',
+                        message: `Your payment of ${paymentRecord.currency === 'USD' ? '$' : '₹'}${paymentRecord.amount} has been processed successfully.`,
+                        customer_id: paymentRecord.customer_id,
+                        service_request_id: requestId,
+                        payment_id: paymentId
+                    });
+                } catch (notificationError) {
+                    console.error('Failed to create payment notification:', notificationError);
+                    // Don't throw error as payment is already successful
+                }
             }
 
             console.log('Payment verified and status updated successfully');
@@ -1199,14 +1247,32 @@ export const api = {
             // Process refund through Razorpay
             const refundResult = await refundPayment(paymentId, refundAmount, reason);
             
-            // Update database with refund information using the new RPC function
+            // Get current payment amount if refund amount not specified
+            let finalRefundAmount = refundAmount;
+            if (!finalRefundAmount) {
+                const { data: payment, error: fetchError } = await supabase
+                    .from('payments')
+                    .select('amount')
+                    .eq('id', paymentId)
+                    .single();
+                
+                if (fetchError) throw fetchError;
+                finalRefundAmount = payment.amount;
+            }
+            
+            // Update database with refund information directly
             const { data: refundSuccess, error } = await supabase
-                .rpc('process_payment_refund', {
-                    p_payment_id: paymentId,
-                    p_refund_amount: refundAmount,
-                    p_refund_reason: reason || 'Customer request',
-                    p_processed_by: 'admin'
-                });
+                .from('payments')
+                .update({
+                    status: 'refunded',
+                    refund_amount: finalRefundAmount,
+                    refund_reason: reason || 'Customer request',
+                    refund_processed_at: new Date().toISOString(),
+                    refund_processed_by: 'admin',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', paymentId)
+                .select();
 
             if (error || !refundSuccess) throw error;
             return true;
@@ -1233,10 +1299,122 @@ export const api = {
         }
     },
 
+    // --- CSV Export Data ---
+    async getCSVExportData(): Promise<any[]> {
+        try {
+            console.log('Fetching comprehensive data for CSV export...');
+            
+            // Fetch service requests with all related data
+            const { data: requests, error: requestsError } = await supabase
+                .from('service_requests')
+                .select(`
+                    *,
+                    quotes (*),
+                    app_users!service_requests_customer_id_fkey (
+                        email
+                    )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (requestsError) {
+                console.error('Error fetching service requests:', requestsError);
+                throw requestsError;
+            }
+
+            // Fetch all payments
+            const { data: payments, error: paymentsError } = await supabase
+                .from('payments')
+                .select('*');
+
+            if (paymentsError) {
+                console.error('Error fetching payments:', paymentsError);
+                throw paymentsError;
+            }
+
+            // Fetch all feedback
+            const { data: feedback, error: feedbackError } = await supabase
+                .from('feedback')
+                .select('*');
+
+            if (feedbackError) {
+                console.error('Error fetching feedback:', feedbackError);
+                throw feedbackError;
+            }
+
+            // Fetch all complaints
+            const { data: complaints, error: complaintsError } = await supabase
+                .from('complaints')
+                .select('*');
+
+            if (complaintsError) {
+                console.error('Error fetching complaints:', complaintsError);
+                throw complaintsError;
+            }
+
+            console.log('Raw data fetched:', {
+                requests: requests?.length || 0,
+                payments: payments?.length || 0,
+                feedback: feedback?.length || 0,
+                complaints: complaints?.length || 0
+            });
+
+            // Transform data for CSV export
+            const csvData = (requests || []).map(request => {
+                // Find related payment
+                const relatedPayment = (payments || []).find(payment => 
+                    payment.service_request_id === request.id
+                );
+
+                // Find related feedback
+                const relatedFeedback = (feedback || []).find(fb => 
+                    fb.service_request_id === request.id
+                );
+
+                // Find related complaint
+                const relatedComplaint = (complaints || []).find(complaint => 
+                    complaint.request_id === request.id
+                );
+
+                return {
+                    'Customer Name': request.customer_name || '',
+                    'Customer Email': request.app_users?.email || '',
+                    'Service Request ID': request.id || '',
+                    'Customer ID': request.customer_id || '',
+                    'Product Type': request.product_type || '',
+                    'Product Detail': request.product_details || '',
+                    'Serial Number': request.serial_number || '',
+                    'Fault Description': request.fault_description || '',
+                    'Customer Phone Number': request.customer_phone || '',
+                    'Is Warranty Claimed': request.is_warranty_claim ? 'Yes' : 'No',
+                    'Is Resolved': relatedComplaint ? (relatedComplaint.is_resolved ? 'Yes' : 'No') : 'N/A',
+                    'Quote Is Approved': request.quotes?.[0]?.is_approved === true ? 'Yes' : 
+                                       request.quotes?.[0]?.is_approved === false ? 'No' : 'Pending',
+                    'Rating': relatedFeedback?.rating || '',
+                    'Comment': relatedFeedback?.comment || '',
+                    'Quote ID': request.quotes?.[0]?.id || '',
+                    'RazorPay Order ID': relatedPayment?.razorpay_order_id || '',
+                    'Payment ID': relatedPayment?.razorpay_payment_id || '',
+                    'Created At': request.created_at || '',
+                    'Status': request.status || '',
+                    'Purchase Date': request.purchase_date || '',
+                    'Razorpay Amount ID': relatedPayment?.id || '',
+                    'Razorpay Amount': relatedPayment?.amount || '',
+                    'Currency': relatedPayment?.currency || request.quotes?.[0]?.currency || ''
+                };
+            });
+
+            console.log('CSV data prepared:', csvData.length, 'records');
+            return csvData;
+        } catch (error) {
+            console.error('Error fetching CSV export data:', error);
+            throw new Error('Failed to fetch data for CSV export');
+        }
+    },
+
     async getPaymentsByCustomer(customerId: string): Promise<any[]> {
         try {
             const { data: payments, error } = await supabase
-                .from('payment_summary')
+                .from('payments')
                 .select('*')
                 .eq('customer_id', customerId)
                 .order('created_at', { ascending: false });
@@ -1282,14 +1460,28 @@ export const api = {
 
     async getPaymentHistory(paymentId: string): Promise<any[]> {
         try {
-            const { data: history, error } = await supabase
-                .from('payment_history')
+            // Since we don't have a separate payment_history table, 
+            // we'll return the payment metadata as history
+            const { data: payment, error } = await supabase
+                .from('payments')
                 .select('*')
-                .eq('payment_id', paymentId)
-                .order('created_at', { ascending: false });
+                .eq('id', paymentId)
+                .single();
 
             if (error) throw error;
-            return history || [];
+            
+            // Return payment metadata as history
+            const history = payment?.metadata ? [{
+                id: payment.id,
+                payment_id: payment.id,
+                status: payment.status,
+                amount: payment.amount,
+                created_at: payment.created_at,
+                updated_at: payment.updated_at,
+                metadata: payment.metadata
+            }] : [];
+            
+            return history;
         } catch (error) {
             console.error('Error fetching payment history:', error);
             return [];
@@ -1358,12 +1550,18 @@ export const api = {
     async updatePaymentStatus(paymentId: string, status: string, changedBy: string, reason?: string): Promise<boolean> {
         try {
             const { data: updateSuccess, error } = await supabase
-                .rpc('update_payment_status', {
-                    p_payment_id: paymentId,
-                    p_status: status,
-                    p_changed_by: changedBy,
-                    p_change_reason: reason || 'Manual status update'
-                });
+                .from('payments')
+                .update({
+                    status: status,
+                    updated_at: new Date().toISOString(),
+                    metadata: {
+                        last_changed_by: changedBy,
+                        change_reason: reason || 'Manual status update',
+                        status_changed_at: new Date().toISOString()
+                    }
+                })
+                .eq('id', paymentId)
+                .select();
 
             if (error || !updateSuccess) throw error;
             return true;
@@ -1410,6 +1608,8 @@ export const api = {
     // --- Notifications ---
     async getCustomerNotifications(customerId: string): Promise<Notification[]> {
         try {
+            console.log('Fetching notifications for customer:', customerId);
+            
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
@@ -1417,8 +1617,12 @@ export const api = {
                 .order('timestamp', { ascending: false })
                 .limit(50);
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error fetching notifications:', error);
+                throw error;
+            }
             
+            console.log('Notifications fetched:', data?.length || 0, 'notifications');
             return data || [];
         } catch (error) {
             console.error('Error fetching customer notifications:', error);
@@ -1457,29 +1661,45 @@ export const api = {
 
     async createNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>): Promise<Notification> {
         try {
-            // Use the service role function to bypass RLS
-            const { data, error } = await supabase.rpc('create_notification_service_role', {
-                p_type: notification.type,
-                p_title: notification.title,
-                p_message: notification.message,
-                p_customer_id: notification.customer_id,
-                p_service_request_id: notification.service_request_id || null,
-                p_payment_id: notification.payment_id || null
-            });
+            console.log('Creating notification:', notification);
+            
+            // Generate notification ID
+            const notificationId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+            
+            // Create notification directly
+            const { data, error } = await supabase
+                .from('notifications')
+                .insert({
+                    id: notificationId,
+                    type: notification.type,
+                    title: notification.title,
+                    message: notification.message,
+                    customer_id: notification.customer_id,
+                    service_request_id: notification.service_request_id || null,
+                    payment_id: notification.payment_id || null,
+                    read: false
+                })
+                .select()
+                .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Notification creation error:', error);
+                throw error;
+            }
+            
+            console.log('Notification created successfully:', data);
             
             // Return the created notification
             return {
-                id: data,
-                type: notification.type,
-                title: notification.title,
-                message: notification.message,
-                timestamp: new Date().toISOString(),
-                read: false,
-                service_request_id: notification.service_request_id,
-                payment_id: notification.payment_id,
-                customer_id: notification.customer_id
+                id: data.id,
+                type: data.type,
+                title: data.title,
+                message: data.message,
+                timestamp: data.timestamp,
+                read: data.read,
+                service_request_id: data.service_request_id,
+                payment_id: data.payment_id,
+                customer_id: data.customer_id
             };
         } catch (error) {
             console.error('Error creating notification:', error);

@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ServiceRequest, Status, ProductType, Feedback } from '../../types';
+import { api } from '../../services/api';
 
 interface AnalyticsChartsProps {
   requests: ServiceRequest[];
@@ -13,6 +14,58 @@ interface ChartData {
 }
 
 const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = [] }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // CSV Download functionality
+  const downloadCSV = async () => {
+    try {
+      setIsDownloading(true);
+      console.log('Starting CSV download...');
+      
+      const csvData = await api.getCSVExportData();
+      console.log('CSV data received:', csvData.length, 'records');
+      
+      if (csvData.length === 0) {
+        alert('No data available for export');
+        return;
+      }
+
+      // Convert to CSV format
+      const headers = Object.keys(csvData[0]);
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => 
+          headers.map(header => {
+            const value = row[header];
+            // Escape commas and quotes in CSV
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `service_requests_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('CSV download completed successfully');
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+      alert('Failed to download CSV. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Comprehensive analytics calculations
   const analytics = useMemo(() => {
     const now = new Date();
@@ -122,30 +175,72 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
   }, [requests, feedback]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-red-50 to-amber-50 dark:from-gray-900 dark:via-red-900/20 dark:to-amber-900/20">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-2xl shadow-2xl mb-8">
+      <div className="relative overflow-hidden bg-gradient-to-r from-red-800 via-red-700 to-amber-800 rounded-2xl shadow-2xl mb-8">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative px-8 py-12">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-3">📊 Analytics Dashboard</h1>
-              <p className="text-blue-100 text-lg">Comprehensive insights into your service operations</p>
+              <h1 className="text-4xl font-bold text-white mb-3">Analytics Dashboard</h1>
+              <p className="text-red-100 text-lg">Comprehensive insights into your service operations</p>
               <div className="flex items-center mt-4 space-x-6">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                  <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse"></div>
                   <span className="text-white text-sm">Live Data</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                  <div className="w-3 h-3 bg-red-400 rounded-full"></div>
                   <span className="text-white text-sm">Real-time Updates</span>
                 </div>
+              </div>
+              
+              {/* Mobile Download Button */}
+              <div className="md:hidden mt-4">
+                <button
+                  onClick={downloadCSV}
+                  disabled={isDownloading}
+                  className="w-full px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/30 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDownloading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Downloading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Download Sheet</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
             <div className="hidden md:block">
               <div className="text-right">
                 <div className="text-3xl font-bold text-white">{requests.length}</div>
-                <div className="text-blue-100">Total Requests</div>
+                <div className="text-red-100">Total Requests</div>
+                <button
+                  onClick={downloadCSV}
+                  disabled={isDownloading}
+                  className="mt-4 px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/30 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDownloading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Downloading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Download Sheet</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -157,8 +252,8 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
         <MetricCard 
           title="Completion Rate" 
           value={`${analytics.completionRate.toFixed(1)}%`}
-          icon="✅"
-          color="green"
+          icon="✓"
+          color="red"
           trend="up"
         />
         <MetricCard 
@@ -166,23 +261,23 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
           value={analytics.avgProcessingTimeHours < 24 ? 
             `${analytics.avgProcessingTimeHours.toFixed(1)} hrs` : 
             `${(analytics.avgProcessingTimeHours / 24).toFixed(1)} days`}
-          icon="⏱️"
-          color="blue"
+          icon="⏰"
+          color="amber"
           trend="down"
         />
         <MetricCard 
           title="Customer Rating" 
           value={analytics.avgRating > 0 ? `${analytics.avgRating.toFixed(1)}/5` : 'N/A'}
           subtitle="Average satisfaction"
-          icon="⭐"
-          color="purple"
+          icon="★"
+          color="burgundy"
           trend="up"
         />
         <MetricCard 
           title="Quote Approval Rate" 
           value={`${analytics.quoteStats.approvalRate.toFixed(1)}%`}
-          icon="💰"
-          color="yellow"
+          icon="$"
+          color="gold"
           trend="up"
         />
       </div>
@@ -193,8 +288,8 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
           <ChartCard 
             title="Service Requests by Status" 
             subtitle={`Total: ${requests.length} requests`}
-            icon="📊"
-            gradient="from-blue-500 to-purple-600"
+            icon="📈"
+            gradient="from-red-600 to-red-800"
           >
             <PieChart data={analytics.statusData} />
           </ChartCard>
@@ -202,8 +297,8 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
           <ChartCard 
             title="Requests by Product Type" 
             subtitle="Distribution across product categories"
-            icon="📦"
-            gradient="from-green-500 to-teal-600"
+            icon="📋"
+            gradient="from-amber-600 to-amber-800"
           >
             <BarChart data={analytics.productData} />
           </ChartCard>
@@ -213,8 +308,8 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
           <ChartCard 
             title="Warranty vs Non-Warranty Claims" 
             subtitle="Service request classification"
-            icon="🛡️"
-            gradient="from-orange-500 to-red-600"
+            icon="🛡"
+            gradient="from-red-700 to-red-900"
           >
             <PieChart data={analytics.warrantyData} />
           </ChartCard>
@@ -223,7 +318,7 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
             title="Daily Request Trends" 
             subtitle="Request volume over last 14 days"
             icon="📈"
-            gradient="from-indigo-500 to-purple-600"
+            gradient="from-amber-700 to-amber-900"
           >
             <LineChart data={analytics.dailyData} />
           </ChartCard>
@@ -235,8 +330,8 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
         <ChartCard 
           title="EPR Integration Status" 
           subtitle="External Product Repair workflow"
-          icon="🔧"
-          gradient="from-cyan-500 to-blue-600"
+          icon="⚙"
+          gradient="from-red-800 to-red-900"
         >
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
@@ -268,8 +363,8 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
         <ChartCard 
           title="Quote Statistics" 
           subtitle="Customer quote decisions"
-          icon="💼"
-          gradient="from-emerald-500 to-green-600"
+          icon="📋"
+          gradient="from-amber-600 to-amber-800"
         >
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-3">
@@ -336,7 +431,7 @@ const MetricCard: React.FC<{
   value: string;
   subtitle?: string;
   icon: string;
-  color: 'green' | 'blue' | 'purple' | 'yellow' | 'red';
+  color: 'green' | 'blue' | 'purple' | 'yellow' | 'red' | 'amber' | 'burgundy' | 'gold';
   trend?: 'up' | 'down' | 'neutral';
 }> = ({ title, value, subtitle, icon, color, trend }) => {
   const colorClasses = {
@@ -344,13 +439,16 @@ const MetricCard: React.FC<{
     blue: 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400',
     purple: 'bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400',
     yellow: 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-600 dark:text-yellow-400',
-    red: 'bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+    red: 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400',
+    amber: 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400',
+    burgundy: 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800/20 dark:to-red-700/20 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300',
+    gold: 'bg-gradient-to-br from-yellow-100 to-amber-100 dark:from-yellow-800/20 dark:to-amber-800/20 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300'
   };
 
   const trendIcons = {
-    up: '📈',
-    down: '📉',
-    neutral: '➡️'
+    up: '↗',
+    down: '↘',
+    neutral: '→'
   };
 
   return (

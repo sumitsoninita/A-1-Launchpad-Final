@@ -260,7 +260,7 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
                       <div>
                         <p className="font-medium text-gray-800 dark:text-white">Request #{request.id.slice(-8)}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-300">{request.customer_name}</p>
-                        <p className="text-sm text-blue-600 dark:text-blue-400">💰 Cost Estimation Ready</p>
+                        <p className="text-sm text-blue-600 dark:text-blue-400">Cost Estimation Ready</p>
                         {request.epr_timeline && request.epr_timeline.length > 0 && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Cost Estimation: {request.epr_timeline[request.epr_timeline.length - 1]?.cost_estimation_currency === 'USD' ? '$' : '₹'}{request.epr_timeline[request.epr_timeline.length - 1]?.cost_estimation}

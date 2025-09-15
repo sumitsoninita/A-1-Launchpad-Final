@@ -104,15 +104,15 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ user, onNotific
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'payment':
-        return '💰';
+        return '$';
       case 'status':
         return '📋';
       case 'quote':
-        return '📄';
+        return '📋';
       case 'epr':
-        return '🔧';
+        return '⚙';
       case 'complaint':
-        return '⚠️';
+        return '⚠';
       default:
         return '🔔';
     }
