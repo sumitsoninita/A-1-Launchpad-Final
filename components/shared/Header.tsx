@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { AppUser } from '../../types';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import NotificationSystem from './NotificationSystem';
 
 interface HeaderProps {
   user: AppUser | null;
@@ -51,6 +52,17 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
             
             {user && (
               <div className="flex items-center space-x-4">
+                {/* Notifications - only show for admin, service, and epr roles */}
+                {(user.role === 'admin' || user.role === 'service' || user.role === 'epr') && (
+                  <NotificationSystem 
+                    user={user}
+                    onNotificationClick={(notification) => {
+                      console.log('Notification clicked:', notification);
+                      // Handle notification click - could navigate to specific page
+                    }}
+                  />
+                )}
+                
                 <div className="text-right">
                     <p className="text-sm font-medium text-gray-800 dark:text-white">{user.email}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user.role.replace('_', ' ')}</p>

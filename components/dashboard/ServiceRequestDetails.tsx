@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ServiceRequest, Role, Status, AppUser, AuditLogEntry, Quote } from '../../types';
 import { api } from '../../services/api';
 import Spinner from '../shared/Spinner';
@@ -39,6 +39,13 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
   
   // Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  
+  // Inline payment state
+  const [paymentInProgress, setPaymentInProgress] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [paymentId, setPaymentId] = useState<string>('');
+  const [orderId, setOrderId] = useState<string>('');
+  const [paymentError, setPaymentError] = useState<string>('');
 
   const isAdmin = user.role !== Role.Customer;
   const currentStepInfo = timelineSteps.indexOf(request.status);
@@ -85,8 +92,10 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         setRequest(updatedRequest);
         onUpdate();
       }
-      setShowPaymentModal(false);
-      alert('Payment successful! Your service request is now being processed.');
+      
+      // Don't close the modal - let the user see the success message and download receipt
+      console.log('✅ Payment successful! Payment ID:', paymentId, 'Order ID:', orderId);
+      
     } catch (error: any) {
       setError('Payment successful but failed to update request status. Please refresh the page.');
     }
@@ -95,6 +104,132 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
   const handlePaymentError = (error: string) => {
     setError(`Payment failed: ${error}`);
     setShowPaymentModal(false);
+  };
+
+  // Inline payment handler
+  const handleInlinePayment = async () => {
+    if (!request.quote) return;
+    
+    setPaymentInProgress(true);
+    setPaymentError('');
+    
+    try {
+      console.log('🚀 Starting inline payment process...');
+      
+      // Create order using API
+      const orderData = await api.createPaymentOrder(request.id, request.quote.id, request.customer_email || request.customer_id);
+      console.log('✅ Order created:', orderData);
+      
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate dummy payment response
+      const dummyPaymentResponse = {
+        razorpay_order_id: orderData.id,
+        razorpay_payment_id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        razorpay_signature: `dummy_signature_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      };
+      
+      console.log('🧪 Dummy payment response:', dummyPaymentResponse);
+      
+      // Verify payment using API
+      const isVerified = await api.verifyPayment(
+        dummyPaymentResponse.razorpay_order_id,
+        dummyPaymentResponse.razorpay_payment_id,
+        dummyPaymentResponse.razorpay_signature,
+        request.id,
+        request.quote.id
+      );
+      
+      if (isVerified) {
+        setPaymentId(dummyPaymentResponse.razorpay_payment_id);
+        setOrderId(dummyPaymentResponse.razorpay_order_id);
+        setPaymentCompleted(true);
+        
+        // Update the request data
+        const updatedRequest = await api.getServiceRequestById(request.id);
+        if (updatedRequest) {
+          setRequest(updatedRequest);
+          onUpdate();
+        }
+        
+        console.log('✅ Inline payment completed successfully!');
+      } else {
+        throw new Error('Payment verification failed');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Inline payment failed:', error);
+      setPaymentError(error.message);
+    } finally {
+      setPaymentInProgress(false);
+    }
+  };
+
+  // Subscribe to real-time payment updates for this specific request
+  useEffect(() => {
+    if (!request.id) return;
+    
+    const subscription = api.subscribeToPayments((payload) => {
+      console.log('Payment update received for request:', request.id, payload);
+      
+      // Check if this payment update is for our current request
+      if (payload.new && payload.new.service_request_id === request.id) {
+        console.log('Payment update for current request detected');
+        
+        // Update local state if payment was completed
+        if (payload.new.status === 'captured') {
+          setPaymentCompleted(true);
+          setPaymentId(payload.new.razorpay_payment_id);
+          setOrderId(payload.new.razorpay_order_id);
+          
+          // Refresh request data
+          api.getServiceRequest(request.id).then(updatedRequest => {
+            if (updatedRequest) {
+              setRequest(updatedRequest);
+              onUpdate();
+            }
+          });
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [request.id, onUpdate]);
+
+  // Download receipt handler
+  const handleDownloadReceipt = () => {
+    if (!request.quote) return;
+    
+    const receiptData = {
+      receipt_number: `RCP-${Date.now()}`,
+      payment_id: paymentId,
+      order_id: orderId,
+      customer_name: request.customer_name,
+      customer_id: request.customer_id,
+      service_request_id: request.id,
+      serial_number: request.serial_number,
+      product_type: request.product_type,
+      quote_items: request.quote.items,
+      total_amount: request.quote.total_cost,
+      currency: request.quote.currency,
+      payment_date: new Date().toISOString(),
+      company_name: 'A-1 Fence Services',
+      company_address: 'Your Company Address',
+      company_phone: 'Your Company Phone',
+      company_email: 'Your Company Email'
+    };
+
+    const dataStr = JSON.stringify(receiptData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `payment-receipt-${request.id}-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
   
   const handleQuoteSubmitted = async () => {
@@ -307,20 +442,181 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                         </div>
                     )}
                     {request.quote.is_approved === true && (
-                        <div>
-                            <p className="text-green-600 font-semibold mb-4">Quote Approved. Please proceed with payment.</p>
-                            {user.role === Role.Customer && !request.payment_completed && (
-                                <button
-                                    onClick={() => setShowPaymentModal(true)}
-                                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
-                                >
-                                    💳 Pay {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}
-                                </button>
-                            )}
-                            {request.payment_completed && (
-                                <p className="text-green-600 font-semibold">✅ Payment Completed</p>
-                            )}
-                            {request.quote.payment_qr_code_url && <img src={request.quote.payment_qr_code_url} alt="Payment QR Code" className="mx-auto" />}
+                        <div className="space-y-6">
+                            {/* Payment Status */}
+                            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-3">
+                                        <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
+                                            Quote Approved
+                                        </h3>
+                                        <div className="mt-1 text-sm text-green-700 dark:text-green-300">
+                                            Please proceed with payment to continue with the repair service.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Payment Options */}
+                            <div className="space-y-6">
+                                {/* Payment Status */}
+                                {paymentCompleted ? (
+                                    /* Payment Success Message */
+                                    <div className="p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                        <div className="text-center">
+                                            <div className="flex items-center justify-center mb-4">
+                                                <svg className="w-12 h-12 text-green-600 dark:text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <h3 className="text-2xl font-bold text-green-800 dark:text-green-200">Payment Successful!</h3>
+                                            </div>
+                                            
+                                            <p className="text-green-700 dark:text-green-300 mb-4">
+                                                Your payment of {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost} has been processed successfully.
+                                            </p>
+                                            
+                                            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg mb-4">
+                                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                                    <div>
+                                                        <span className="text-gray-600 dark:text-gray-400">Payment ID:</span>
+                                                        <p className="font-medium text-gray-800 dark:text-white">{paymentId.slice(-12)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-600 dark:text-gray-400">Order ID:</span>
+                                                        <p className="font-medium text-gray-800 dark:text-white">{orderId.slice(-12)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-600 dark:text-gray-400">Amount:</span>
+                                                        <p className="font-medium text-gray-800 dark:text-white">{request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-600 dark:text-gray-400">Date:</span>
+                                                        <p className="font-medium text-gray-800 dark:text-white">{new Date().toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <button
+                                                onClick={handleDownloadReceipt}
+                                                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold transition-colors flex items-center justify-center mx-auto"
+                                            >
+                                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Download Receipt
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Payment Options */
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Online Payment */}
+                                        <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
+                                            <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">💳 Online Payment</h4>
+                                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                                                Pay securely using our test payment gateway. No real money will be charged.
+                                            </p>
+                                            
+                                            {/* Payment Error */}
+                                            {paymentError && (
+                                                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                                                    {paymentError}
+                                                </div>
+                                            )}
+                                            
+                                            {user.role === Role.Customer && !request.payment_completed ? (
+                                                <button
+                                                    onClick={handleInlinePayment}
+                                                    disabled={paymentInProgress}
+                                                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md font-semibold transition-colors flex items-center justify-center"
+                                                >
+                                                    {paymentInProgress ? (
+                                                        <>
+                                                            <Spinner />
+                                                            <span className="ml-2">Processing Payment...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                                            </svg>
+                                                            🧪 Test Pay {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}
+                                                        </>
+                                                    )}
+                                                </button>
+                                            ) : request.payment_completed ? (
+                                                <div className="text-center">
+                                                    <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full">
+                                                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                        Payment Completed
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-gray-500 dark:text-gray-400">
+                                                    Payment option not available
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* QR Code Payment */}
+                                <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
+                                    <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">📱 QR Code Payment</h4>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                                        Scan the QR code with your UPI app to make payment instantly.
+                                    </p>
+                                    
+                                    {/* Dummy QR Code */}
+                                    <div className="flex flex-col items-center space-y-3">
+                                        <div className="w-32 h-32 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center">
+                                            <div className="text-center">
+                                                <div className="w-24 h-24 bg-gray-900 rounded grid grid-cols-8 gap-0.5 p-1">
+                                                    {Array.from({ length: 64 }).map((_, i) => (
+                                                        <div 
+                                                            key={i} 
+                                                            className={`w-2 h-2 rounded-sm ${Math.random() > 0.5 ? 'bg-white' : 'bg-gray-900'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">UPI ID: a1fence@paytm</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Amount: {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                // Copy UPI payment details to clipboard
+                                                const upiString = `upi://pay?pa=a1fence@paytm&pn=A-1%20Fence%20Services&am=${request.quote.total_cost}&cu=${request.quote.currency}&tn=Service%20Payment%20${request.id.slice(-8)}`;
+                                                navigator.clipboard.writeText(upiString);
+                                                alert('UPI payment link copied to clipboard!');
+                                            }}
+                                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                        >
+                                            Copy UPI Link
+                                        </button>
+                                    </div>
+                                </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Payment Instructions */}
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Payment Instructions</h4>
+                                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                                    <li>• Payment is required before repair work begins</li>
+                                    <li>• You will receive a payment receipt via email</li>
+                                    <li>• Service team will be notified once payment is confirmed</li>
+                                    <li>• For any payment issues, contact our support team</li>
+                                </ul>
+                            </div>
                         </div>
                     )}
                     {request.quote.is_approved === false && <p className="text-red-600 font-semibold">Quote Declined.</p>}

@@ -3,6 +3,7 @@ import { AppUser, ServiceRequest } from '../../types';
 import { api } from '../../services/api';
 import Spinner from '../shared/Spinner';
 import ServiceRequestList from './ServiceRequestList';
+import PaymentStats from './PaymentStats';
 
 interface ChannelPartnerDashboardProps {
   user: AppUser;
@@ -38,6 +39,11 @@ const ChannelPartnerDashboard: React.FC<ChannelPartnerDashboardProps> = ({ user 
       <p className="text-gray-500 dark:text-gray-400">
         Welcome, {user.fullName || user.email}. View the status of recent service requests below.
       </p>
+
+      {/* Payment Statistics */}
+      <div className="mb-6">
+        <PaymentStats user={user} />
+      </div>
 
       <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">Recent Service Requests</h2>

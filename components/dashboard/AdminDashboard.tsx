@@ -8,6 +8,7 @@ import AnalyticsCharts from './AnalyticsCharts';
 import FeedbackList from './FeedbackList';
 import ComplaintsList from './ComplaintsList';
 import EPRTimeline from './EPRTimeline';
+import PaymentStats from './PaymentStats';
 
 const PRODUCT_CATEGORIES: ProductType[] = Object.values(ProductType);
 const WORKFLOW_STATUSES: Status[] = Object.values(Status);
@@ -110,6 +111,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             <button onClick={() => setActiveTab('complaints')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'complaints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Customer Complaints <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-red-100 text-red-800 rounded-full">{complaints.filter(c => !c.is_resolved).length}</span>
             </button>
+            <button onClick={() => setActiveTab('payment-stats')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'payment-stats' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+              💳 Payment Management & Stats
+            </button>
             <button onClick={() => setActiveTab('epr-integration')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'epr-integration' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               EPR Integration
             </button>
@@ -190,6 +194,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Customer Complaints</h2>
            {loading ? <div className="flex justify-center items-center h-64"><Spinner /></div> : <ComplaintsList complaints={complaints} onComplaintUpdate={fetchData} />}
         </div>
+      )}
+
+      {activeTab === 'payment-stats' && (user.role === Role.Admin || user.role === Role.Service) && (
+        <PaymentStats user={user} />
       )}
 
       {activeTab === 'epr-integration' && (

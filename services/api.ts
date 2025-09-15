@@ -1084,7 +1084,7 @@ export const api = {
                 throw new Error('Quote not found');
             }
 
-            // Create Razorpay order
+            // Create Razorpay order using dummy service
             const receipt = `receipt_${requestId}_${Date.now()}`;
             const razorpayOrder = await createPaymentOrder({
                 amount: quote.total_cost,
@@ -1097,22 +1097,23 @@ export const api = {
                 }
             });
 
-            // Create payment record in database
-            const { data: payment, error: paymentError } = await supabase
-                .rpc('create_payment_record', {
+            // Create payment record using the simplified RPC function
+            const { data: paymentId, error: paymentError } = await supabase
+                .rpc('create_simple_payment', {
                     p_service_request_id: requestId,
                     p_quote_id: quoteId,
-                    p_razorpay_order_id: razorpayOrder.id,
                     p_amount: quote.total_cost,
-                    p_customer_name: request.customer_name,
-                    p_receipt: receipt,
-                    p_currency: quote.currency || 'INR',
                     p_customer_email: request.customer_id, // Assuming customer_id is email
-                    p_customer_phone: null
+                    p_customer_name: request.customer_name,
+                    p_razorpay_order_id: razorpayOrder.id
                 });
 
-            if (paymentError) throw paymentError;
+            if (paymentError) {
+                console.error('Payment creation error:', paymentError);
+                throw new Error('Failed to create payment record');
+            }
 
+            console.log('Payment record created with ID:', paymentId);
             return razorpayOrder;
         } catch (error) {
             console.error('Error creating payment order:', error);
@@ -1122,36 +1123,42 @@ export const api = {
 
     async verifyPayment(orderId: string, paymentId: string, signature: string, requestId: string, quoteId: string): Promise<boolean> {
         try {
-            // Verify payment signature with Razorpay
+            // Verify payment signature with Razorpay (dummy verification)
             const isValidSignature = verifyPaymentSignature(orderId, paymentId, signature);
             
             if (!isValidSignature) {
                 throw new Error('Invalid payment signature');
             }
 
-            // Get payment details from Razorpay
+            // Get payment details from Razorpay (dummy)
             const paymentDetails = await getPaymentDetails(paymentId);
             
-            // Update payment status in database
-            const { error: updateError } = await supabase
+            // Get the payment record ID from the order ID
+            const { data: paymentRecord, error: fetchError } = await supabase
+                .from('payments')
+                .select('id')
+                .eq('razorpay_order_id', orderId)
+                .single();
+
+            if (fetchError || !paymentRecord) {
+                console.error('Payment record not found:', fetchError);
+                throw new Error('Payment record not found');
+            }
+
+            // Update payment status using the simplified RPC function
+            const { data: updateSuccess, error: updateError } = await supabase
                 .rpc('update_payment_status', {
-                    p_razorpay_payment_id: paymentId,
+                    p_payment_id: paymentRecord.id,
                     p_status: 'captured',
-                    p_payment_method: paymentDetails.method || 'card',
-                    p_razorpay_response: {
-                        order_id: orderId,
-                        payment_id: paymentId,
-                        signature: signature,
-                        status: paymentDetails.status,
-                        method: paymentDetails.method,
-                        amount: paymentDetails.amount,
-                        currency: paymentDetails.currency,
-                        captured: paymentDetails.captured
-                    }
+                    p_razorpay_payment_id: paymentId
                 });
 
-            if (updateError) throw updateError;
+            if (updateError || !updateSuccess) {
+                console.error('Payment status update error:', updateError);
+                throw new Error('Failed to update payment status');
+            }
 
+            console.log('Payment verified and status updated successfully');
             return true;
         } catch (error) {
             console.error('Error verifying payment:', error);
@@ -1180,19 +1187,209 @@ export const api = {
             // Process refund through Razorpay
             const refundResult = await refundPayment(paymentId, refundAmount, reason);
             
-            // Update database with refund information
-            const { error } = await supabase
+            // Update database with refund information using the new RPC function
+            const { data: refundSuccess, error } = await supabase
                 .rpc('process_payment_refund', {
-                    p_razorpay_payment_id: paymentId,
+                    p_payment_id: paymentId,
                     p_refund_amount: refundAmount,
-                    p_refund_reason: reason || 'Customer request'
+                    p_refund_reason: reason || 'Customer request',
+                    p_processed_by: 'admin'
                 });
 
-            if (error) throw error;
+            if (error || !refundSuccess) throw error;
             return true;
         } catch (error) {
             console.error('Error processing refund:', error);
             throw new Error('Failed to process refund');
         }
+    },
+
+    // --- New Payment Management Methods ---
+    
+    async getAllPayments(): Promise<any[]> {
+        try {
+            const { data: payments, error } = await supabase
+                .from('payments')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return payments || [];
+        } catch (error) {
+            console.error('Error fetching all payments:', error);
+            return [];
+        }
+    },
+
+    async getPaymentsByCustomer(customerId: string): Promise<any[]> {
+        try {
+            const { data: payments, error } = await supabase
+                .from('payment_summary')
+                .select('*')
+                .eq('customer_id', customerId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return payments || [];
+        } catch (error) {
+            console.error('Error fetching customer payments:', error);
+            return [];
+        }
+    },
+
+    async getPaymentById(paymentId: string): Promise<any> {
+        try {
+            const { data: payment, error } = await supabase
+                .from('payments')
+                .select(`
+                    *,
+                    service_requests!inner (
+                        id,
+                        serial_number,
+                        product_type,
+                        customer_name,
+                        status
+                    ),
+                    quotes!inner (
+                        id,
+                        total_cost,
+                        currency,
+                        items
+                    )
+                `)
+                .eq('id', paymentId)
+                .single();
+
+            if (error) throw error;
+            return payment;
+        } catch (error) {
+            console.error('Error fetching payment by ID:', error);
+            throw new Error('Failed to fetch payment details');
+        }
+    },
+
+    async getPaymentHistory(paymentId: string): Promise<any[]> {
+        try {
+            const { data: history, error } = await supabase
+                .from('payment_history')
+                .select('*')
+                .eq('payment_id', paymentId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return history || [];
+        } catch (error) {
+            console.error('Error fetching payment history:', error);
+            return [];
+        }
+    },
+
+    async getPaymentStatistics(): Promise<any> {
+        try {
+            // Get all payments and calculate statistics
+            const { data: payments, error } = await supabase
+                .from('payments')
+                .select('amount, status, created_at');
+
+            if (error) throw error;
+
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const totalPayments = payments?.length || 0;
+            const successfulPayments = payments?.filter(p => p.status === 'captured').length || 0;
+            const totalAmount = payments?.reduce((sum, p) => sum + (p.status === 'captured' ? parseFloat(p.amount) : 0), 0) || 0;
+
+            const stats = {
+                total_payments: totalPayments,
+                total_amount_captured: totalAmount,
+                successful_payments: successfulPayments,
+                failed_payments: payments?.filter(p => p.status === 'failed').length || 0,
+                cancelled_payments: payments?.filter(p => p.status === 'cancelled').length || 0,
+                refunded_payments: payments?.filter(p => p.status === 'refunded').length || 0,
+                total_amount_refunded: payments?.filter(p => p.status === 'refunded')
+                    .reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0,
+                average_payment_amount: totalPayments > 0 ? totalAmount / totalPayments : 0,
+                success_rate_percentage: totalPayments > 0 ? (successfulPayments / totalPayments) * 100 : 0,
+                today_payments: payments?.filter(p => new Date(p.created_at) >= today).length || 0,
+                today_amount: payments?.filter(p => new Date(p.created_at) >= today && p.status === 'captured')
+                    .reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0,
+                monthly_payments: payments?.filter(p => new Date(p.created_at) >= thisMonth).length || 0,
+                monthly_amount: payments?.filter(p => new Date(p.created_at) >= thisMonth && p.status === 'captured')
+                    .reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0
+            };
+
+            return stats;
+        } catch (error) {
+            console.error('Error fetching payment statistics:', error);
+            return {
+                total_payments: 0,
+                successful_payments: 0,
+                failed_payments: 0,
+                cancelled_payments: 0,
+                refunded_payments: 0,
+                total_amount_captured: 0,
+                total_amount_refunded: 0,
+                average_payment_amount: 0,
+                success_rate_percentage: 0,
+                today_payments: 0,
+                today_amount: 0,
+                monthly_payments: 0,
+                monthly_amount: 0
+            };
+        }
+    },
+
+    async updatePaymentStatus(paymentId: string, status: string, changedBy: string, reason?: string): Promise<boolean> {
+        try {
+            const { data: updateSuccess, error } = await supabase
+                .rpc('update_payment_status', {
+                    p_payment_id: paymentId,
+                    p_status: status,
+                    p_changed_by: changedBy,
+                    p_change_reason: reason || 'Manual status update'
+                });
+
+            if (error || !updateSuccess) throw error;
+            return true;
+        } catch (error) {
+            console.error('Error updating payment status:', error);
+            throw new Error('Failed to update payment status');
+        }
+    },
+
+    // Real-time payment subscription
+    subscribeToPayments(callback: (payload: any) => void) {
+        return supabase
+            .channel('payments_changes')
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'payments' 
+                }, 
+                callback
+            )
+            .subscribe();
+    },
+
+    // Real-time payment statistics subscription
+    subscribeToPaymentStatistics(callback: (payload: any) => void) {
+        return supabase
+            .channel('payment_statistics_changes')
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'payments' 
+                }, 
+                async () => {
+                    // Fetch updated statistics when payments change
+                    const stats = await this.getPaymentStatistics();
+                    callback({ type: 'statistics_update', data: stats });
+                }
+            )
+            .subscribe();
     }
 };
