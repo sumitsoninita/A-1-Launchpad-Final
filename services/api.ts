@@ -1,4 +1,4 @@
-import { AppUser, Role, ServiceRequest, Status, Complaint, Quote, Feedback } from '../types';
+import { AppUser, Role, ServiceRequest, Status, Complaint, EnrichedComplaint, Quote, Feedback, EPRStatus, EPRTimelineEntry } from '../types';
 import { supabase, supabaseAdmin } from './supabase';
 
 // ================================================================= //
@@ -52,7 +52,8 @@ export const api = {
                         const validPasswords: { [key: string]: string } = {
                             'admin@test.com': 'admin123',
                             'service@test.com': 'service123',
-                            'partner@test.com': 'partner123'
+                            'partner@test.com': 'partner123',
+                            'epr@test.com': 'epr123'
                         };
                         
                         if (validPasswords[email.toLowerCase()] === password) {
@@ -310,7 +311,9 @@ export const api = {
             
             return requests?.map(req => ({
                 ...req,
-                quote: req.quotes?.[0] || null
+                quote: req.quotes?.[0] || null,
+                epr_timeline: req.epr_timeline || [],
+                current_epr_status: req.current_epr_status || null
             })) || [];
         } catch (error) {
             console.error('Error fetching service requests:', error);
@@ -320,6 +323,8 @@ export const api = {
 
     async getServiceRequestsForCustomer(customerId: string): Promise<ServiceRequest[]> {
         try {
+            console.log('Fetching service requests for customer ID:', customerId);
+            
             const { data: requests, error } = await supabase
                 .from('service_requests')
                 .select(`
@@ -329,12 +334,29 @@ export const api = {
                 .eq('customer_id', customerId)
                 .order('created_at', { ascending: false });
             
-            if (error) throw error;
+            if (error) {
+                console.error('Database error fetching customer service requests:', error);
+                throw error;
+            }
             
-            return requests?.map(req => ({
+            console.log(`Found ${requests?.length || 0} service requests for customer ${customerId}`);
+            
+            const result = requests?.map(req => ({
                 ...req,
-                quote: req.quotes?.[0] || null
+                quote: req.quotes?.[0] || null,
+                epr_timeline: req.epr_timeline || [],
+                current_epr_status: req.current_epr_status || null
             })) || [];
+            
+            // Additional validation: ensure all returned requests belong to the customer
+            const invalidRequests = result.filter(req => req.customer_id !== customerId);
+            if (invalidRequests.length > 0) {
+                console.error('SECURITY WARNING: Found requests that do not belong to customer:', invalidRequests);
+                // Filter out any requests that don't match the customer ID
+                return result.filter(req => req.customer_id === customerId);
+            }
+            
+            return result;
         } catch (error) {
             console.error('Error fetching customer service requests:', error);
             return [];
@@ -356,7 +378,9 @@ export const api = {
             
             return request ? {
                 ...request,
-                quote: request.quotes?.[0] || null
+                quote: request.quotes?.[0] || null,
+                epr_timeline: request.epr_timeline || [],
+                current_epr_status: request.current_epr_status || null
             } : undefined;
         } catch (error) {
             console.error('Error fetching service request:', error);
@@ -633,6 +657,53 @@ export const api = {
         }
     },
     
+    async getComplaints(): Promise<EnrichedComplaint[]> {
+        try {
+            const { data: complaintsList, error } = await supabase
+                .from('complaints')
+                .select(`
+                    *,
+                    service_requests!inner (
+                        customer_name,
+                        product_type,
+                        serial_number,
+                        status
+                    )
+                `)
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            // Enrich complaints with request details
+            const enrichedComplaints = complaintsList?.map(comp => ({
+                ...comp,
+                customer_name: comp.service_requests?.customer_name || 'N/A',
+                product_type: comp.service_requests?.product_type,
+                serial_number: comp.service_requests?.serial_number || 'N/A',
+                request_status: comp.service_requests?.status || 'N/A'
+            })) || [];
+            
+            return enrichedComplaints;
+        } catch (error) {
+            console.error('Error fetching complaints:', error);
+            return [];
+        }
+    },
+
+    async updateComplaintStatus(complaintId: string, isResolved: boolean): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('complaints')
+                .update({ is_resolved: isResolved })
+                .eq('id', complaintId);
+            
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error updating complaint status:', error);
+            throw new Error('Failed to update complaint status');
+        }
+    },
+    
     async getFeedback(): Promise<Feedback[]> {
         try {
             const { data: feedbackList, error } = await supabase
@@ -661,6 +732,183 @@ export const api = {
         } catch (error) {
             console.error('Error fetching feedback:', error);
             return [];
+        }
+    },
+
+    // --- EPR Team Methods ---
+    async updateEPRStatus(
+        requestId: string, 
+        eprStatus: EPRStatus, 
+        userEmail: string, 
+        details?: string, 
+        costEstimation?: number, 
+        costEstimationCurrency?: 'INR' | 'USD',
+        approvalDecision?: 'approved' | 'declined'
+    ): Promise<ServiceRequest> {
+        try {
+            // Get current request to update timeline
+            const { data: currentRequest, error: fetchError } = await supabase
+                .from('service_requests')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Create new EPR timeline entry
+            const newTimelineEntry: EPRTimelineEntry = {
+                timestamp: new Date().toISOString(),
+                user: userEmail,
+                action: `EPR Status Updated to: ${eprStatus}`,
+                epr_status: eprStatus,
+                details: details || '',
+                cost_estimation: costEstimation,
+                cost_estimation_currency: costEstimationCurrency,
+                approval_decision: approvalDecision
+            };
+
+            // Get existing EPR timeline or create new one
+            const existingTimeline = currentRequest.epr_timeline || [];
+            const updatedTimeline = [...existingTimeline, newTimelineEntry];
+
+            // Determine if we need to update the main status based on EPR status
+            let mainStatusUpdate = {};
+            if (eprStatus === EPRStatus.CostEstimationPreparation) {
+                // When EPR starts cost estimation, set main status to "Awaiting Approval"
+                mainStatusUpdate = { status: 'Awaiting Approval' };
+            } else if (eprStatus === EPRStatus.Approved) {
+                // When EPR approves, service team will handle the main status update
+                // Don't update main status here - service team will do it after customer approves quote
+            } else if (eprStatus === EPRStatus.Declined) {
+                // When EPR declines, service team will handle the main status update
+                // Don't update main status here - service team will do it after customer rejects quote
+            } else if (eprStatus === EPRStatus.RepairCompleted) {
+                mainStatusUpdate = { status: 'Quality Check' };
+            }
+
+            // Update the request with new EPR status and timeline
+            const { data: updatedRequest, error: updateError } = await supabase
+                .from('service_requests')
+                .update({
+                    current_epr_status: eprStatus,
+                    epr_timeline: updatedTimeline,
+                    ...mainStatusUpdate,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId)
+                .select(`
+                    *,
+                    quotes (*)
+                `)
+                .single();
+
+            if (updateError) throw updateError;
+
+            return {
+                ...updatedRequest,
+                quote: updatedRequest.quotes?.[0] || null,
+                epr_timeline: updatedRequest.epr_timeline || [],
+                current_epr_status: updatedRequest.current_epr_status || null
+            };
+        } catch (error) {
+            console.error('Error updating EPR status:', error);
+            throw new Error('Failed to update EPR status');
+        }
+    },
+
+    async getServiceRequestsWithEPRStatus(): Promise<ServiceRequest[]> {
+        try {
+            const { data: requests, error } = await supabase
+                .from('service_requests')
+                .select(`
+                    *,
+                    quotes (*)
+                `)
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            return requests?.map(req => ({
+                ...req,
+                quote: req.quotes?.[0] || null,
+                epr_timeline: req.epr_timeline || [],
+                current_epr_status: req.current_epr_status || null
+            })) || [];
+        } catch (error) {
+            console.error('Error fetching service requests with EPR status:', error);
+            return [];
+        }
+    },
+
+    // New method for service team to update status after customer quote decision
+    async updateStatusAfterQuoteDecision(
+        requestId: string, 
+        isApproved: boolean, 
+        userEmail: string
+    ): Promise<ServiceRequest> {
+        try {
+            // Get current request to check EPR status
+            const { data: currentRequest, error: fetchError } = await supabase
+                .from('service_requests')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            let newStatus: string;
+            let eprStatusUpdate: string | null = null;
+
+            if (isApproved) {
+                // Customer approved quote
+                newStatus = 'Repair in Progress';
+                eprStatusUpdate = 'Approved';
+            } else {
+                // Customer rejected quote
+                newStatus = 'Cancelled';
+                eprStatusUpdate = 'Declined';
+            }
+
+            // Create new EPR timeline entry
+            const newTimelineEntry: EPRTimelineEntry = {
+                timestamp: new Date().toISOString(),
+                user: userEmail,
+                action: `Service Team: Customer ${isApproved ? 'approved' : 'rejected'} quote`,
+                epr_status: eprStatusUpdate as EPRStatus,
+                details: `Customer ${isApproved ? 'approved' : 'rejected'} the quote. Status updated to ${newStatus}.`
+            };
+
+            // Get existing EPR timeline or create new one
+            const existingTimeline = currentRequest.epr_timeline || [];
+            const updatedTimeline = [...existingTimeline, newTimelineEntry];
+
+            // Update the request
+            const { data: updatedRequest, error: updateError } = await supabase
+                .from('service_requests')
+                .update({
+                    status: newStatus,
+                    current_epr_status: eprStatusUpdate,
+                    epr_timeline: updatedTimeline,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId)
+                .select(`
+                    *,
+                    quotes (*)
+                `)
+                .single();
+
+            if (updateError) throw updateError;
+
+            return {
+                ...updatedRequest,
+                quote: updatedRequest.quotes?.[0] || null,
+                epr_timeline: updatedRequest.epr_timeline || [],
+                current_epr_status: updatedRequest.current_epr_status || null
+            };
+        } catch (error) {
+            console.error('Error updating status after quote decision:', error);
+            throw new Error('Failed to update status after quote decision');
         }
     }
 };

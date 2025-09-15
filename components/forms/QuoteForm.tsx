@@ -11,14 +11,16 @@ interface QuoteFormProps {
 }
 
 const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSuccess }) => {
-  const [items, setItems] = useState([{ description: '', cost: 0 }]);
+  const [items, setItems] = useState([{ description: '', cost: 0, currency: 'INR' as 'INR' | 'USD' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleItemChange = (index: number, field: 'description' | 'cost', value: string) => {
+  const handleItemChange = (index: number, field: 'description' | 'cost' | 'currency', value: string) => {
     const newItems = [...items];
     if (field === 'cost') {
       newItems[index][field] = parseFloat(value) || 0;
+    } else if (field === 'currency') {
+      newItems[index][field] = value as 'INR' | 'USD';
     } else {
       newItems[index][field] = value;
     }
@@ -26,7 +28,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
   };
 
   const addItem = () => {
-    setItems([...items, { description: '', cost: 0 }]);
+    setItems([...items, { description: '', cost: 0, currency: 'INR' as 'INR' | 'USD' }]);
   };
 
   const removeItem = (index: number) => {
@@ -55,6 +57,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
     const quoteData: Omit<Quote, 'id' | 'created_at' | 'is_approved'> = {
         items: items,
         total_cost: totalCost,
+        currency: items[0]?.currency || 'INR',
         payment_qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PaymentFor${requestId}Amount${totalCost}`
     };
 
@@ -81,10 +84,12 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
                     value={item.description}
                     onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                     required
-                    className="mt-1 w-2/3 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                    className="mt-1 w-1/2 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
                 />
-                <div className="relative w-1/3">
-                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 dark:text-gray-400">$</span>
+                <div className="relative w-1/4">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 dark:text-gray-400">
+                        {item.currency === 'USD' ? '$' : '₹'}
+                    </span>
                     <input
                         type="number"
                         placeholder="Cost"
@@ -96,6 +101,14 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
                         className="mt-1 w-full pl-7 pr-2 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
                     />
                 </div>
+                <select
+                    value={item.currency}
+                    onChange={(e) => handleItemChange(index, 'currency', e.target.value)}
+                    className="mt-1 w-1/6 px-2 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                >
+                    <option value="INR">INR</option>
+                    <option value="USD">USD</option>
+                </select>
                 <button
                     type="button"
                     onClick={() => removeItem(index)}
@@ -121,7 +134,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
           <div className="pt-4 border-t border-gray-200 dark:border-gray-600">
             <div className="flex justify-between font-bold text-lg text-gray-800 dark:text-gray-100">
                 <span>Total Cost:</span>
-                <span>${totalCost.toFixed(2)}</span>
+                <span>{items[0]?.currency === 'USD' ? '$' : '₹'}{totalCost.toFixed(2)}</span>
             </div>
           </div>
 

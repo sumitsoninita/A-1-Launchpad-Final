@@ -8,6 +8,7 @@ import ResetPassword from './components/auth/ResetPassword';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import CustomerDashboard from './components/dashboard/CustomerDashboard';
 import ChannelPartnerDashboard from './components/dashboard/ChannelPartnerDashboard';
+import EPRDashboard from './components/dashboard/EPRDashboard';
 import Header from './components/shared/Header';
 import Spinner from './components/shared/Spinner';
 import ChatWidget from './components/shared/ChatWidget';
@@ -143,6 +144,8 @@ const AppContent: React.FC = () => {
         return <AdminDashboard user={user} />;
       case Role.ChannelPartner:
         return <ChannelPartnerDashboard user={user} />;
+      case Role.EPR:
+        return <EPRDashboard user={user} />;
       case Role.Customer:
         return <CustomerDashboard user={user} />;
       default:

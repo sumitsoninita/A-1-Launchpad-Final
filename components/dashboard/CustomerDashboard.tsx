@@ -23,14 +23,31 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ user }) => {
     setLoading(true);
     setError(null);
     try {
+      // Validate that we have a valid user ID
+      if (!user.id) {
+        throw new Error('Invalid user session. Please log in again.');
+      }
+      
+      console.log('CustomerDashboard: Fetching requests for user:', user.email, 'with ID:', user.id);
       const data = await api.getServiceRequestsForCustomer(user.id);
-      setRequests(data);
+      
+      // Additional client-side validation
+      const invalidRequests = data.filter(req => req.customer_id !== user.id);
+      if (invalidRequests.length > 0) {
+        console.error('SECURITY WARNING: CustomerDashboard received requests not belonging to user:', invalidRequests);
+        // Filter out any requests that don't belong to this customer
+        const validRequests = data.filter(req => req.customer_id === user.id);
+        setRequests(validRequests);
+      } else {
+        setRequests(data);
+      }
     } catch (err: any) {
+      console.error('Error in CustomerDashboard fetchRequests:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [user.id]);
+  }, [user.id, user.email]);
 
   useEffect(() => {
     if(view === 'list') {
@@ -69,6 +86,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ user }) => {
                 <button
                   onClick={() => setView('complaint')}
                   className="inline-flex items-center px-4 py-2 border border-yellow-500 rounded-md shadow-sm text-sm font-medium text-yellow-600 bg-white dark:bg-gray-700 hover:bg-yellow-50 dark:hover:bg-gray-600 focus:outline-none"
+                  title="Submit complaint for completed or cancelled service requests"
                 >
                   Submit Complaint
                 </button>

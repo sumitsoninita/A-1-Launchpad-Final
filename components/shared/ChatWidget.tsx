@@ -35,8 +35,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
     const loadUserRequests = async () => {
       try {
         if (user.role === 'customer') {
+          console.log('ChatWidget: Loading requests for customer:', user.email, 'with ID:', user.id);
           const requests = await api.getServiceRequestsForCustomer(user.id);
-          setUserRequests(requests);
+          
+          // Additional validation for customers
+          const validRequests = requests.filter(req => req.customer_id === user.id);
+          if (validRequests.length !== requests.length) {
+            console.error('SECURITY WARNING: ChatWidget received invalid requests for customer');
+          }
+          setUserRequests(validRequests);
         } else {
           const requests = await api.getServiceRequests();
           setUserRequests(requests);

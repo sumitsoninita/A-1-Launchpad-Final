@@ -4,6 +4,7 @@ export enum Role {
   Service = 'service',
   Admin = 'admin',
   ChannelPartner = 'channel_partner',
+  EPR = 'epr',
 }
 
 export enum ProductType {
@@ -23,6 +24,16 @@ export enum Status {
   Cancelled = 'Cancelled',
 }
 
+export enum EPRStatus {
+  CostEstimationPreparation = 'Cost Estimation Preparation',
+  AwaitingApproval = 'Awaiting Approval',
+  Approved = 'Approved',
+  Declined = 'Declined',
+  RepairInProgress = 'Repair in Progress',
+  RepairCompleted = 'Repair Completed',
+  ReturnToCustomer = 'Return to Customer',
+}
+
 export interface AuditLogEntry {
   timestamp: string;
   user: string;
@@ -30,10 +41,22 @@ export interface AuditLogEntry {
   details?: string;
 }
 
+export interface EPRTimelineEntry {
+  timestamp: string;
+  user: string;
+  action: string;
+  epr_status: EPRStatus;
+  details?: string;
+  cost_estimation?: number;
+  cost_estimation_currency?: 'INR' | 'USD';
+  approval_decision?: 'approved' | 'declined';
+}
+
 export interface Quote {
     id: string;
-    items: { description: string; cost: number }[];
+    items: { description: string; cost: number; currency: 'INR' | 'USD' }[];
     total_cost: number;
+    currency: 'INR' | 'USD';
     is_approved: boolean | null;
     created_at: string;
     payment_qr_code_url?: string;
@@ -59,6 +82,8 @@ export interface ServiceRequest {
   quote?: Quote | null;
   geolocation?: string | null;
   audit_log: AuditLogEntry[];
+  epr_timeline?: EPRTimelineEntry[];
+  current_epr_status?: EPRStatus;
 }
 
 export interface Complaint {
@@ -69,6 +94,12 @@ export interface Complaint {
     complaint_details: string;
     created_at: string;
     is_resolved: boolean;
+}
+
+export interface EnrichedComplaint extends Complaint {
+    product_type?: string;
+    serial_number?: string;
+    request_status?: string;
 }
 
 export interface FAQItem {

@@ -48,8 +48,13 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     if (!request.quote) return;
     setLoading(true);
     try {
+      // First update the quote status
       const updatedRequest = await api.updateQuoteStatus(request.id, isApproved, user.email);
-      setRequest(updatedRequest);
+      
+      // Then update the main status and EPR status based on customer decision
+      const finalRequest = await api.updateStatusAfterQuoteDecision(request.id, isApproved, user.email);
+      
+      setRequest(finalRequest);
       onUpdate();
     } catch(err:any) {
       setError(err.message);
@@ -162,6 +167,48 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                 </p>
                 {isAdmin ? (
                     <div className="space-y-4">
+                        {/* Talk to Customer Button */}
+                        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Customer Contact</h4>
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                                Customer: <strong>{request.customer_name}</strong><br/>
+                                {request.customer_phone ? (
+                                    <>Phone: <strong>{request.customer_phone}</strong></>
+                                ) : (
+                                    <span className="text-yellow-600 dark:text-yellow-400">No phone number provided</span>
+                                )}
+                            </p>
+                            {request.customer_phone ? (
+                                <button 
+                                    onClick={() => {
+                                        if (navigator.clipboard) {
+                                            navigator.clipboard.writeText(request.customer_phone!);
+                                            alert(`Phone number copied to clipboard: ${request.customer_phone}`);
+                                        } else {
+                                            // Fallback for older browsers
+                                            const textArea = document.createElement('textarea');
+                                            textArea.value = request.customer_phone!;
+                                            document.body.appendChild(textArea);
+                                            textArea.select();
+                                            document.execCommand('copy');
+                                            document.body.removeChild(textArea);
+                                            alert(`Phone number copied to clipboard: ${request.customer_phone}`);
+                                        }
+                                    }}
+                                    className="w-full flex items-center justify-center py-2 px-4 border border-blue-300 dark:border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    Talk to Customer
+                                </button>
+                            ) : (
+                                <div className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 text-center">
+                                    No phone number available
+                                </div>
+                            )}
+                        </div>
+
                         <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Update Status</label>
                         <select
                             id="status"

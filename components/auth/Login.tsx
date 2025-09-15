@@ -170,6 +170,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
               <div>Admin: admin@test.com / admin123</div>
               <div>Service: service@test.com / service123</div>
               <div>Partner: partner@test.com / partner123</div>
+              <div>EPR: epr@test.com / epr123</div>
             </div>
           </div>
         )}
