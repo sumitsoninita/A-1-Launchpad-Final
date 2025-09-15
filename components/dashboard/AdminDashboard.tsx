@@ -105,8 +105,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
        {(user.role === Role.Admin || user.role === Role.Service) && (
         <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button onClick={() => setActiveTab('analytics')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'analytics' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+              📊 Analytics
+            </button>
             <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-              Overview & Analytics
+              📋 Service Requests
             </button>
             <button onClick={() => setActiveTab('complaints')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'complaints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Customer Complaints <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-red-100 text-red-800 rounded-full">{complaints.filter(c => !c.is_resolved).length}</span>
@@ -114,9 +117,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             <button onClick={() => setActiveTab('payment-stats')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'payment-stats' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               💳 Payment Management & Stats
             </button>
-            <button onClick={() => setActiveTab('epr-integration')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'epr-integration' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-              EPR Integration
-            </button>
+            {user.role === Role.Service && (
+              <button onClick={() => setActiveTab('epr-integration')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'epr-integration' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                EPR Integration
+              </button>
+            )}
             <button onClick={() => setActiveTab('quotation-history')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'quotation-history' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Quotation History
             </button>
@@ -129,6 +134,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         </div>
       )}
 
+      {activeTab === 'analytics' && user.role === Role.Admin && (
+        <AnalyticsCharts requests={requests} feedback={feedback} />
+      )}
+
       {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* KPI Cards */}
@@ -138,9 +147,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             <KpiCard title="Completed This Month" value={kpiData.completed} />
             {user.role === Role.Admin && <KpiCard title="Avg. Satisfaction" value={kpiData.avgRating + ' / 5'} />}
           </div>
-
-          {/* Analytics Charts - Admin Only */}
-          {user.role === Role.Admin && <AnalyticsCharts requests={requests} />}
           
            <h2 className="text-2xl font-bold text-gray-800 dark:text-white pt-4">Service Requests</h2>
 
@@ -200,7 +206,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         <PaymentStats user={user} />
       )}
 
-      {activeTab === 'epr-integration' && (
+      {activeTab === 'epr-integration' && user.role === Role.Service && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">EPR Team Integration</h2>
