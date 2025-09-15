@@ -771,11 +771,28 @@ export const api = {
             const existingTimeline = currentRequest.epr_timeline || [];
             const updatedTimeline = [...existingTimeline, newTimelineEntry];
 
+            // Create audit log entry for EPR action
+            const auditLogEntry = {
+                timestamp: new Date().toISOString(),
+                user: userEmail,
+                action: `EPR Team: ${eprStatus}`,
+                details: details || '',
+                type: 'epr_action',
+                epr_status: eprStatus,
+                cost_estimation: costEstimation,
+                cost_estimation_currency: costEstimationCurrency,
+                approval_decision: approvalDecision
+            };
+
+            // Get existing audit log or create new one
+            const existingAuditLog = currentRequest.audit_log || [];
+            const updatedAuditLog = [...existingAuditLog, auditLogEntry];
+
             // Determine if we need to update the main status based on EPR status
             let mainStatusUpdate = {};
             if (eprStatus === EPRStatus.CostEstimationPreparation) {
-                // When EPR starts cost estimation, set main status to "Awaiting Approval"
-                mainStatusUpdate = { status: 'Awaiting Approval' };
+                // Don't automatically update main status - let service team decide when to move to "Awaiting Approval"
+                // mainStatusUpdate = { status: 'Awaiting Approval' };
             } else if (eprStatus === EPRStatus.Approved) {
                 // When EPR approves, service team will handle the main status update
                 // Don't update main status here - service team will do it after customer approves quote
@@ -792,6 +809,7 @@ export const api = {
                 .update({
                     current_epr_status: eprStatus,
                     epr_timeline: updatedTimeline,
+                    audit_log: updatedAuditLog,
                     ...mainStatusUpdate,
                     updated_at: new Date().toISOString()
                 })
@@ -840,6 +858,79 @@ export const api = {
         }
     },
 
+    // New method for service team to update status to "Awaiting Approval" when ready to send quote
+    async updateStatusToAwaitingApproval(
+        requestId: string, 
+        userEmail: string
+    ): Promise<ServiceRequest> {
+        try {
+            // Get current request
+            const { data: currentRequest, error: fetchError } = await supabase
+                .from('service_requests')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Create new EPR timeline entry
+            const newTimelineEntry: EPRTimelineEntry = {
+                timestamp: new Date().toISOString(),
+                user: userEmail,
+                action: 'Service Team: Status updated to Awaiting Approval',
+                epr_status: EPRStatus.AwaitingApproval,
+                details: 'Service team has generated quote and is awaiting customer approval.'
+            };
+
+            // Get existing EPR timeline or create new one
+            const existingTimeline = currentRequest.epr_timeline || [];
+            const updatedTimeline = [...existingTimeline, newTimelineEntry];
+
+            // Create audit log entry for service team action
+            const auditLogEntry = {
+                timestamp: new Date().toISOString(),
+                user: userEmail,
+                action: 'Service Team: Status updated to Awaiting Approval',
+                details: 'Service team has generated quote and is awaiting customer approval.',
+                type: 'service_action',
+                epr_status: 'Awaiting Approval'
+            };
+
+            // Get existing audit log or create new one
+            const existingAuditLog = currentRequest.audit_log || [];
+            const updatedAuditLog = [...existingAuditLog, auditLogEntry];
+
+            // Update the request
+            const { data: updatedRequest, error: updateError } = await supabase
+                .from('service_requests')
+                .update({
+                    status: 'Awaiting Approval',
+                    current_epr_status: 'Awaiting Approval',
+                    epr_timeline: updatedTimeline,
+                    audit_log: updatedAuditLog,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId)
+                .select(`
+                    *,
+                    quotes (*)
+                `)
+                .single();
+
+            if (updateError) throw updateError;
+
+            return {
+                ...updatedRequest,
+                quote: updatedRequest.quotes?.[0] || null,
+                epr_timeline: updatedRequest.epr_timeline || [],
+                current_epr_status: updatedRequest.current_epr_status || null
+            };
+        } catch (error) {
+            console.error('Error updating status to awaiting approval:', error);
+            throw new Error('Failed to update status to awaiting approval');
+        }
+    },
+
     // New method for service team to update status after customer quote decision
     async updateStatusAfterQuoteDecision(
         requestId: string, 
@@ -882,6 +973,21 @@ export const api = {
             const existingTimeline = currentRequest.epr_timeline || [];
             const updatedTimeline = [...existingTimeline, newTimelineEntry];
 
+            // Create audit log entry for customer decision
+            const auditLogEntry = {
+                timestamp: new Date().toISOString(),
+                user: userEmail,
+                action: `Customer: Quote ${isApproved ? 'Approved' : 'Rejected'}`,
+                details: `Customer ${isApproved ? 'approved' : 'rejected'} the quote. Status updated to ${newStatus}.`,
+                type: 'customer_action',
+                epr_status: eprStatusUpdate,
+                quote_decision: isApproved ? 'approved' : 'rejected'
+            };
+
+            // Get existing audit log or create new one
+            const existingAuditLog = currentRequest.audit_log || [];
+            const updatedAuditLog = [...existingAuditLog, auditLogEntry];
+
             // Update the request
             const { data: updatedRequest, error: updateError } = await supabase
                 .from('service_requests')
@@ -889,6 +995,7 @@ export const api = {
                     status: newStatus,
                     current_epr_status: eprStatusUpdate,
                     epr_timeline: updatedTimeline,
+                    audit_log: updatedAuditLog,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', requestId)

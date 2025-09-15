@@ -67,9 +67,12 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     setLoading(true);
     setError(null);
     try {
+        // First get the updated request with the new quote
         const updatedRequest = await api.getServiceRequestById(request.id);
         if (updatedRequest) {
-            setRequest(updatedRequest);
+            // Then update status to "Awaiting Approval" since quote is ready
+            const finalRequest = await api.updateStatusToAwaitingApproval(request.id, user.email);
+            setRequest(finalRequest);
         }
         onUpdate();
     } catch (err: any) {
@@ -287,19 +290,226 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     </div>
   );
 
+  const renderComprehensiveTimeline = () => {
+    // Combine all timeline data
+    const allTimelineEntries = [];
+    
+    // Add main status timeline entries
+    const statusTimeline = [
+      {
+        timestamp: request.created_at,
+        type: 'status_change',
+        action: 'Service Request Created',
+        user: request.customer_name,
+        details: 'Customer submitted service request',
+        status: 'Received',
+        icon: '📝',
+        color: 'bg-gray-500'
+      }
+    ];
+
+    // Add EPR timeline entries
+    if (request.epr_timeline && request.epr_timeline.length > 0) {
+      request.epr_timeline.forEach(entry => {
+        allTimelineEntries.push({
+          timestamp: entry.timestamp,
+          type: 'epr_action',
+          action: entry.action,
+          user: entry.user,
+          details: entry.details,
+          epr_status: entry.epr_status,
+          cost_estimation: entry.cost_estimation,
+          cost_estimation_currency: entry.cost_estimation_currency,
+          approval_decision: entry.approval_decision,
+          icon: '🔧',
+          color: 'bg-blue-500'
+        });
+      });
+    }
+
+    // Add quote-related entries
+    if (request.quote) {
+      allTimelineEntries.push({
+        timestamp: request.quote.created_at,
+        type: 'quote_created',
+        action: 'Quote Generated',
+        user: 'Service Team',
+        details: `Quote generated with total cost: ${request.quote.currency === 'USD' ? '$' : '₹'}${request.quote.total_cost}`,
+        quote_amount: request.quote.total_cost,
+        quote_currency: request.quote.currency,
+        icon: '💰',
+        color: 'bg-green-500'
+      });
+
+      if (request.quote.is_approved !== null) {
+        allTimelineEntries.push({
+          timestamp: request.updated_at,
+          type: 'customer_decision',
+          action: `Customer ${request.quote.is_approved ? 'Approved' : 'Rejected'} Quote`,
+          user: 'Customer',
+          details: `Customer ${request.quote.is_approved ? 'approved' : 'rejected'} the quote`,
+          quote_decision: request.quote.is_approved ? 'approved' : 'rejected',
+          icon: '👤',
+          color: 'bg-purple-500'
+        });
+      }
+    }
+
+    // Sort all entries by timestamp
+    const sortedTimeline = [...statusTimeline, ...allTimelineEntries].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    return (
+      <div className='p-4'>
+        <h3 className="text-lg font-semibold mb-6 text-gray-700 dark:text-gray-200">Comprehensive Timeline</h3>
+        <div className="relative">
+          <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
+          <div className="space-y-6">
+            {sortedTimeline.map((entry, index) => (
+              <div key={index} className="relative flex items-start">
+                <div className={`${entry.color} rounded-full h-8 w-8 flex items-center justify-center text-white text-sm z-10 relative`}>
+                  {entry.icon}
+                </div>
+                <div className="ml-6 flex-1 pb-6">
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-100">{entry.action}</h4>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                      by <span className="font-medium">{entry.user}</span>
+                    </p>
+                    {entry.details && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{entry.details}</p>
+                    )}
+                    
+                    {/* Show additional details based on entry type */}
+                    {entry.cost_estimation && (
+                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                          Cost Estimation: {entry.cost_estimation_currency === 'USD' ? '$' : '₹'}{entry.cost_estimation}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {entry.epr_status && (
+                      <div className="mt-2">
+                        <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded">
+                          EPR Status: {entry.epr_status}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {entry.quote_amount && (
+                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                          Quote Amount: {entry.quote_currency === 'USD' ? '$' : '₹'}{entry.quote_amount}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {entry.quote_decision && (
+                      <div className="mt-2">
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                          entry.quote_decision === 'approved' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                        }`}>
+                          Quote: {entry.quote_decision}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderAuditLogTab = () => (
     <div className='p-4'>
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200">Activity Log</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200">Comprehensive Activity Log</h3>
         <ul className="space-y-4">
-            {request.audit_log.slice().reverse().map((log, index) => (
-                <li key={index} className="flex items-start">
-                    <div className="bg-primary-500 rounded-full h-3 w-3 mt-1.5 mr-3 flex-shrink-0"></div>
-                    <div>
-                        <p className="font-semibold text-gray-800 dark:text-gray-100">{log.action}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">by {log.user} on {new Date(log.timestamp).toLocaleString()}</p>
-                    </div>
-                </li>
-            ))}
+            {request.audit_log.slice().reverse().map((log, index) => {
+                const getLogIcon = (type: string) => {
+                    switch (type) {
+                        case 'epr_action':
+                            return '🔧';
+                        case 'service_action':
+                            return '⚙️';
+                        case 'customer_action':
+                            return '👤';
+                        default:
+                            return '📝';
+                    }
+                };
+
+                const getLogColor = (type: string) => {
+                    switch (type) {
+                        case 'epr_action':
+                            return 'bg-blue-500';
+                        case 'service_action':
+                            return 'bg-green-500';
+                        case 'customer_action':
+                            return 'bg-purple-500';
+                        default:
+                            return 'bg-primary-500';
+                    }
+                };
+
+                return (
+                    <li key={index} className="flex items-start p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className={`${getLogColor(log.type || 'default')} rounded-full h-8 w-8 mt-1 mr-4 flex-shrink-0 flex items-center justify-center text-white text-sm`}>
+                            {getLogIcon(log.type || 'default')}
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                                <p className="font-semibold text-gray-800 dark:text-gray-100">{log.action}</p>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                                    {log.type || 'system'}
+                                </span>
+                            </div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                by {log.user} on {new Date(log.timestamp).toLocaleString()}
+                            </p>
+                            {log.details && (
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{log.details}</p>
+                            )}
+                            {log.cost_estimation && (
+                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                                        Cost Estimation: {log.cost_estimation_currency === 'USD' ? '$' : '₹'}{log.cost_estimation}
+                                    </p>
+                                </div>
+                            )}
+                            {log.epr_status && (
+                                <div className="mt-2">
+                                    <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded">
+                                        EPR Status: {log.epr_status}
+                                    </span>
+                                </div>
+                            )}
+                            {log.quote_decision && (
+                                <div className="mt-2">
+                                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                                        log.quote_decision === 'approved' 
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                    }`}>
+                                        Quote: {log.quote_decision}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </li>
+                );
+            })}
         </ul>
     </div>
   );
@@ -339,14 +549,16 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                 <button onClick={() => setActiveTab('details')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Details</button>
                 <button onClick={() => setActiveTab('quote')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'quote' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Quote</button>
-                {isAdmin && <button onClick={() => setActiveTab('audit')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'audit' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Audit Log</button>}
+                <button onClick={() => setActiveTab('timeline')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'timeline' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Comprehensive Timeline</button>
+                {(isAdmin || user.role === 'epr' || user.role === 'service') && <button onClick={() => setActiveTab('audit')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'audit' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Audit Log</button>}
             </nav>
         </div>
 
         <div>
             {activeTab === 'details' && renderDetailsTab()}
             {activeTab === 'quote' && renderQuoteTab()}
-            {isAdmin && activeTab === 'audit' && renderAuditLogTab()}
+            {activeTab === 'timeline' && renderComprehensiveTimeline()}
+            {(isAdmin || user.role === 'epr' || user.role === 'service') && activeTab === 'audit' && renderAuditLogTab()}
         </div>
 
       {showFeedbackForm && <FeedbackForm requestId={request.id} onClose={() => setShowFeedbackForm(false)} />}
