@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../shared/Modal';
 import Spinner from '../shared/Spinner';
 import { api } from '../../services/api';
-import { Quote } from '../../types';
+import { Quote, ServiceRequest } from '../../types';
 
 interface QuoteFormProps {
   requestId: string;
@@ -11,16 +11,36 @@ interface QuoteFormProps {
 }
 
 const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSuccess }) => {
+  const [request, setRequest] = useState<ServiceRequest | null>(null);
   const [items, setItems] = useState([{ description: '', cost: 0, currency: 'INR' as 'INR' | 'USD' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch request to get EPR currency
+  useEffect(() => {
+    const fetchRequest = async () => {
+      try {
+        const requestData = await api.getServiceRequestById(requestId);
+        if (requestData) {
+          setRequest(requestData);
+          // Set currency based on EPR cost estimation currency
+          const eprCurrency = requestData.epr_cost_estimation_currency || 'INR';
+          setItems([{ description: '', cost: 0, currency: eprCurrency }]);
+        }
+      } catch (error) {
+        console.error('Error fetching request:', error);
+      }
+    };
+    fetchRequest();
+  }, [requestId]);
 
   const handleItemChange = (index: number, field: 'description' | 'cost' | 'currency', value: string) => {
     const newItems = [...items];
     if (field === 'cost') {
       newItems[index][field] = parseFloat(value) || 0;
     } else if (field === 'currency') {
-      newItems[index][field] = value as 'INR' | 'USD';
+      // Don't allow currency change - use EPR currency for all items
+      return;
     } else {
       newItems[index][field] = value;
     }
@@ -28,7 +48,8 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
   };
 
   const addItem = () => {
-    setItems([...items, { description: '', cost: 0, currency: 'INR' as 'INR' | 'USD' }]);
+    const eprCurrency = request?.epr_cost_estimation_currency || 'INR';
+    setItems([...items, { description: '', cost: 0, currency: eprCurrency }]);
   };
 
   const removeItem = (index: number) => {
@@ -75,6 +96,13 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
     <Modal title="Generate Repair Quote" onClose={onClose}>
       <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {request?.epr_cost_estimation_currency && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                <strong>Currency:</strong> All quote items will use {request.epr_cost_estimation_currency} as set by the EPR team during cost estimation.
+              </p>
+            </div>
+          )}
           <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
             {items.map((item, index) => (
                 <div key={index} className="flex items-center space-x-2">
@@ -101,14 +129,9 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
                         className="mt-1 w-full pl-7 pr-2 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
                     />
                 </div>
-                <select
-                    value={item.currency}
-                    onChange={(e) => handleItemChange(index, 'currency', e.target.value)}
-                    className="mt-1 w-1/6 px-2 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
-                >
-                    <option value="INR">INR</option>
-                    <option value="USD">USD</option>
-                </select>
+                <div className="mt-1 w-1/6 px-2 py-2 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-md text-center text-sm text-gray-600 dark:text-gray-300">
+                    {item.currency}
+                </div>
                 <button
                     type="button"
                     onClick={() => removeItem(index)}

@@ -833,10 +833,38 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                                         Scan the QR code with your UPI app to make payment instantly.
                                     </p>
                                     
-                                    {/* Dummy QR Code */}
+                                    {/* QR Code */}
                                     <div className="flex flex-col items-center space-y-3">
-                                        <div className="w-32 h-32 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center">
-                                            <div className="text-center">
+                                        <div className="w-32 h-32 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center p-2">
+                                            <img 
+                                                src="https://drive.google.com/uc?export=view&id=1lEPfaoXX-ykUXInoPVzjCWsm5f4HtHCI"
+                                                alt="Payment QR Code"
+                                                className="w-full h-full object-contain"
+                                                onLoad={() => console.log('✅ QR Code image loaded successfully from Google Drive')}
+                                                onError={(e) => {
+                                                    console.error('❌ QR Code image failed to load from Google Drive:', e);
+                                                    console.log('Trying alternative URL format...');
+                                                    
+                                                    // Try alternative URL format
+                                                    const target = e.target as HTMLImageElement;
+                                                    const alternativeUrl = "https://lh3.googleusercontent.com/d/1lEPfaoXX-ykUXInoPVzjCWsm5f4HtHCI";
+                                                    
+                                                    // Try the alternative URL
+                                                    const img = new Image();
+                                                    img.onload = () => {
+                                                        console.log('✅ Alternative URL worked!');
+                                                        target.src = alternativeUrl;
+                                                    };
+                                                    img.onerror = () => {
+                                                        console.error('❌ Alternative URL also failed, showing fallback QR');
+                                                        target.style.display = 'none';
+                                                        const fallback = target.nextElementSibling as HTMLElement;
+                                                        if (fallback) fallback.style.display = 'block';
+                                                    };
+                                                    img.src = alternativeUrl;
+                                                }}
+                                            />
+                                            <div className="text-center hidden">
                                                 <div className="w-24 h-24 bg-gray-900 rounded grid grid-cols-8 gap-0.5 p-1">
                                                     {Array.from({ length: 64 }).map((_, i) => (
                                                         <div 

@@ -95,6 +95,7 @@ export interface ServiceRequest {
   audit_log: AuditLogEntry[];
   epr_timeline?: EPRTimelineEntry[];
   current_epr_status?: EPRStatus;
+  epr_cost_estimation_currency?: 'INR' | 'USD';
   payment_required?: boolean;
   payment_completed?: boolean;
 }

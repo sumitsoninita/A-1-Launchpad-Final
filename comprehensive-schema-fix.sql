@@ -37,6 +37,7 @@ CREATE TABLE service_requests (
     audit_log JSONB DEFAULT '[]'::jsonb,
     epr_timeline JSONB DEFAULT '[]'::jsonb,
     current_epr_status TEXT CHECK (current_epr_status IN ('Cost Estimation Preparation', 'Awaiting Approval', 'Approved', 'Declined', 'Repair in Progress', 'Repair Completed', 'Return to Customer')),
+    epr_cost_estimation_currency TEXT CHECK (epr_cost_estimation_currency IN ('INR', 'USD')),
     payment_required BOOLEAN DEFAULT FALSE,
     payment_completed BOOLEAN DEFAULT FALSE
 );

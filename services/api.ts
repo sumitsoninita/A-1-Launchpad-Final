@@ -326,7 +326,8 @@ export const api = {
                 ...req,
                 quote: req.quotes?.[0] || null,
                 epr_timeline: req.epr_timeline || [],
-                current_epr_status: req.current_epr_status || null
+                current_epr_status: req.current_epr_status || null,
+                epr_cost_estimation_currency: req.epr_cost_estimation_currency || null
             })) || [];
         } catch (error) {
             console.error('Error fetching service requests:', error);
@@ -358,7 +359,8 @@ export const api = {
                 ...req,
                 quote: req.quotes?.[0] || null,
                 epr_timeline: req.epr_timeline || [],
-                current_epr_status: req.current_epr_status || null
+                current_epr_status: req.current_epr_status || null,
+                epr_cost_estimation_currency: req.epr_cost_estimation_currency || null
             })) || [];
             
             // Additional validation: ensure all returned requests belong to the customer
@@ -393,7 +395,8 @@ export const api = {
                 ...request,
                 quote: request.quotes?.[0] || null,
                 epr_timeline: request.epr_timeline || [],
-                current_epr_status: request.current_epr_status || null
+                current_epr_status: request.current_epr_status || null,
+                epr_cost_estimation_currency: request.epr_cost_estimation_currency || null
             } : undefined;
         } catch (error) {
             console.error('Error fetching service request:', error);
@@ -861,15 +864,22 @@ export const api = {
             }
 
             // Update the request with new EPR status and timeline
+            const updateData: any = {
+                current_epr_status: eprStatus,
+                epr_timeline: updatedTimeline,
+                audit_log: updatedAuditLog,
+                ...mainStatusUpdate,
+                updated_at: new Date().toISOString()
+            };
+            
+            // Store EPR cost estimation currency if provided
+            if (costEstimationCurrency) {
+                updateData.epr_cost_estimation_currency = costEstimationCurrency;
+            }
+            
             const { data: updatedRequest, error: updateError } = await supabase
                 .from('service_requests')
-                .update({
-                    current_epr_status: eprStatus,
-                    epr_timeline: updatedTimeline,
-                    audit_log: updatedAuditLog,
-                    ...mainStatusUpdate,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', requestId)
                 .select(`
                     *,
@@ -883,7 +893,8 @@ export const api = {
                 ...updatedRequest,
                 quote: updatedRequest.quotes?.[0] || null,
                 epr_timeline: updatedRequest.epr_timeline || [],
-                current_epr_status: updatedRequest.current_epr_status || null
+                current_epr_status: updatedRequest.current_epr_status || null,
+                epr_cost_estimation_currency: updatedRequest.epr_cost_estimation_currency || null
             };
         } catch (error) {
             console.error('Error updating EPR status:', error);
@@ -907,7 +918,8 @@ export const api = {
                 ...req,
                 quote: req.quotes?.[0] || null,
                 epr_timeline: req.epr_timeline || [],
-                current_epr_status: req.current_epr_status || null
+                current_epr_status: req.current_epr_status || null,
+                epr_cost_estimation_currency: req.epr_cost_estimation_currency || null
             })) || [];
         } catch (error) {
             console.error('Error fetching service requests with EPR status:', error);
