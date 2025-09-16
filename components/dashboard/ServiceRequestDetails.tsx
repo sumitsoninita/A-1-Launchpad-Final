@@ -501,8 +501,8 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
 
 
   const renderDetailsTab = () => (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <DetailSection title="Customer & Product Information">
             <DetailItem label="Customer Name" value={request.customer_name} />
             {request.customer_phone && <DetailItem label="Phone Number" value={request.customer_phone} />}
@@ -518,23 +518,23 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
               <div className="space-y-2">
                 {request.geolocation.includes('|') ? (
                   <>
-                    <div className="grid grid-cols-3 gap-4">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
-                      <dd className="col-span-2 text-sm text-gray-900 dark:text-gray-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                      <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
+                      <dd className="col-span-2 text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                         {request.geolocation.split('|')[0].trim()}
                       </dd>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Service Center</dt>
-                      <dd className="col-span-2 text-sm text-gray-900 dark:text-gray-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                      <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Service Center</dt>
+                      <dd className="col-span-2 text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                         {request.geolocation.split('|')[1]?.replace('Service Center:', '').trim()}
                       </dd>
                     </div>
                   </>
                 ) : (
-                  <div className="grid grid-cols-3 gap-4">
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Location Info</dt>
-                    <dd className="col-span-2 text-sm text-gray-900 dark:text-gray-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Location Info</dt>
+                    <dd className="col-span-2 text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                       {request.geolocation}
                     </dd>
                   </div>
@@ -578,18 +578,18 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
             </div>
           </DetailSection>
         </div>
-        <div className="md:col-span-1 space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg mb-4">Status & Actions</h3>
-                <p className="mb-4">Current Status: 
+        <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-3 sm:p-4 rounded-lg">
+                <h3 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">Status & Actions</h3>
+                <p className="mb-3 sm:mb-4 text-sm sm:text-base">Current Status: 
                     <span className="font-bold text-primary-600 dark:text-primary-400 ml-2">{request.status}</span>
                 </p>
                 {isAdmin ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                         {/* Talk to Customer Button */}
-                        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Customer Contact</h4>
-                            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <h4 className="text-xs sm:text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Customer Contact</h4>
+                            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 mb-3">
                                 Customer: <strong>{request.customer_name}</strong><br/>
                                 {request.customer_phone ? (
                                     <>Phone: <strong>{request.customer_phone}</strong></>

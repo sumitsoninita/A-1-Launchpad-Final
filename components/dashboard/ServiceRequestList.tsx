@@ -31,14 +31,14 @@ const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSel
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Request ID</th>
-              {!showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>}
-              {!showRepairHistory && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>}
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service Center</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date Submitted</th>
-              <th scope="col" className="relative px-6 py-3">
+              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Request ID</th>
+              {!showRepairHistory && <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>}
+              {!showRepairHistory && <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>}
+              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
+              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service Center</th>
+              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date Submitted</th>
+              <th scope="col" className="relative px-3 sm:px-6 py-3">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -57,24 +57,24 @@ const ServiceRequestList: React.FC<ServiceRequestListProps> = ({ requests, onSel
                   {!showRepairHistory && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{request.customer_phone || 'N/A'}</td>}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{request.product_type}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{serviceCenter}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}>
                       {request.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(request.created_at).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-3">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-1 sm:space-y-0 sm:space-x-3">
                       {request.status === Status.Completed && onComplaintClick && (
                         <button 
                           onClick={() => onComplaintClick(request)} 
-                          className="inline-flex items-center px-4 py-2 border border-yellow-500 rounded-md text-xs font-medium text-yellow-600 bg-white dark:bg-gray-700 hover:bg-yellow-50 dark:hover:bg-gray-600 focus:outline-none transition-colors duration-200"
+                          className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 border border-yellow-500 rounded-md text-xs font-medium text-yellow-600 bg-white dark:bg-gray-700 hover:bg-yellow-50 dark:hover:bg-gray-600 focus:outline-none transition-colors duration-200"
                           title="Submit complaint for this completed service"
                         >
                           Submit Complaint
                         </button>
                       )}
-                      <button onClick={() => onSelectRequest(request)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200 transition-colors duration-200">
+                      <button onClick={() => onSelectRequest(request)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200 transition-colors duration-200 text-xs sm:text-sm">
                         View Details
                       </button>
                     </div>

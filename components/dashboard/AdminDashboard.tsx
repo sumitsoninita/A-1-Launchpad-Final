@@ -106,38 +106,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Management Dashboard</h1>
-      <p className="text-gray-500 dark:text-gray-400">Welcome, {user.email}. Role: <span className="font-semibold capitalize">{user.role.replace('_', ' ')}</span></p>
+    <div className="space-y-4 sm:space-y-6">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Management Dashboard</h1>
+      <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Welcome, {user.email}. Role: <span className="font-semibold capitalize">{user.role.replace('_', ' ')}</span></p>
       
       
        {(user.role === Role.Admin || user.role === Role.Service) && (
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <nav className="-mb-px flex flex-wrap space-x-2 sm:space-x-8" aria-label="Tabs">
             {user.role === Role.Admin && (
-              <button onClick={() => setActiveTab('analytics')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'analytics' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+              <button onClick={() => setActiveTab('analytics')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'analytics' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                 Analytics
               </button>
             )}
-            <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+            <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'overview' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Service Requests
             </button>
-            <button onClick={() => setActiveTab('complaints')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'complaints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+            <button onClick={() => setActiveTab('complaints')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'complaints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Customer Complaints <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-red-100 text-red-800 rounded-full">{complaints.filter(c => !c.is_resolved).length}</span>
             </button>
-            <button onClick={() => setActiveTab('payment-stats')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'payment-stats' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+            <button onClick={() => setActiveTab('payment-stats')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'payment-stats' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Payment Management & Stats
             </button>
             {user.role === Role.Service && (
-              <button onClick={() => setActiveTab('epr-integration')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'epr-integration' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+              <button onClick={() => setActiveTab('epr-integration')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'epr-integration' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                 EPR Integration
               </button>
             )}
-            <button onClick={() => setActiveTab('quotation-history')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'quotation-history' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+            <button onClick={() => setActiveTab('quotation-history')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'quotation-history' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Quotation History
             </button>
             {user.role === Role.Admin && (
-              <button onClick={() => setActiveTab('feedback')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'feedback' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+              <button onClick={() => setActiveTab('feedback')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'feedback' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                 Customer Feedback <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-primary-100 text-primary-800 rounded-full">{feedback.length}</span>
               </button>
             )}
@@ -152,37 +152,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <KpiCard title="Total Requests" value={kpiData.total} />
             <KpiCard title="In Progress" value={kpiData.inProgress} />
             <KpiCard title="Completed This Month" value={kpiData.completed} />
             {user.role === Role.Admin && <KpiCard title="Avg. Satisfaction" value={kpiData.avgRating + ' / 5'} />}
           </div>
           
-           <h2 className="text-2xl font-bold text-gray-800 dark:text-white pt-4">Service Requests</h2>
+           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white pt-4">Service Requests</h2>
 
           {/* Filters and Search */}
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
             <input
                 type="text"
                 placeholder="Search by S/N, Customer, ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-1/3 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="w-full sm:w-1/3 px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
             />
-            <div className="flex items-center space-x-4">
-                <select value={productFilter} onChange={e => setProductFilter(e.target.value as ProductType | 'all')} className="w-full sm:w-auto px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <select value={productFilter} onChange={e => setProductFilter(e.target.value as ProductType | 'all')} className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base">
                     <option value="all">All Products</option>
                     {PRODUCT_CATEGORIES.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as Status | 'all')} className="w-full sm:w-auto px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as Status | 'all')} className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base">
                     <option value="all">All Statuses</option>
                     {WORKFLOW_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <select 
                   value={eprStatusFilter} 
                   onChange={e => setEprStatusFilter(e.target.value)} 
-                  className="w-full sm:w-auto px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                 >
                     <option value="all">All EPR Statuses</option>
                     <option value="Cost Estimation Preparation">Cost Estimation Preparation</option>
@@ -208,7 +208,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
       {activeTab === 'complaints' && (user.role === Role.Admin || user.role === Role.Service) && (
         <div className="space-y-6">
-           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Customer Complaints</h2>
+           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Customer Complaints</h2>
            {loading ? <div className="flex justify-center items-center h-64"><Spinner /></div> : <ComplaintsList complaints={complaints} onComplaintUpdate={fetchData} />}
         </div>
       )}
@@ -220,7 +220,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       {activeTab === 'epr-integration' && user.role === Role.Service && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">EPR Team Integration</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">EPR Team Integration</h2>
             <button
               onClick={fetchData}
               className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
@@ -229,10 +229,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* EPR Actions for Service Team */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">EPR Cost Estimations Ready</h3>
+            <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-3 sm:mb-4">EPR Cost Estimations Ready</h3>
               <div className="space-y-3">
                 {requests.filter(req => req.current_epr_status === 'Cost Estimation Preparation').map(request => (
                   <div key={request.id} className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -263,8 +263,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             </div>
 
             {/* Requests Ready for EPR Team */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Ready for EPR Team</h3>
+            <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-3 sm:mb-4">Ready for EPR Team</h3>
               <div className="space-y-3">
                 {requests.filter(req => req.status === 'Diagnosis' && !req.current_epr_status).map(request => (
                   <div key={request.id} className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
@@ -295,12 +295,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
           {/* Customer Quote Decisions */}
           <div className="mt-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Customer Quote Decisions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-3 sm:mb-4">Customer Quote Decisions</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Approved Quotes */}
                 <div>
-                  <h4 className="text-md font-medium text-green-600 dark:text-green-400 mb-3">✓ Approved Quotes</h4>
+                  <h4 className="text-sm sm:text-md font-medium text-green-600 dark:text-green-400 mb-2 sm:mb-3">✓ Approved Quotes</h4>
                   <div className="space-y-2">
                     {requests.filter(req => req.quote && req.quote.is_approved === true).map(request => (
                       <div key={request.id} className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -329,7 +329,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
                 {/* Rejected Quotes */}
                 <div>
-                  <h4 className="text-md font-medium text-red-600 dark:text-red-400 mb-3">✗ Rejected Quotes</h4>
+                  <h4 className="text-sm sm:text-md font-medium text-red-600 dark:text-red-400 mb-2 sm:mb-3">✗ Rejected Quotes</h4>
                   <div className="space-y-2">
                     {requests.filter(req => req.quote && req.quote.is_approved === false).map(request => (
                       <div key={request.id} className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -363,7 +363,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           {selectedRequest && (
             <div className="mt-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">EPR Timeline for Request #{selectedRequest.id.slice(-8)}</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white">EPR Timeline for Request #{selectedRequest.id.slice(-8)}</h3>
                 <button
                   onClick={() => setSelectedRequest(null)}
                   className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
@@ -385,7 +385,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       {activeTab === 'quotation-history' && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Quotation History</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Quotation History</h2>
             <button
               onClick={fetchData}
               className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
@@ -399,11 +399,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Request ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quote Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Request ID</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quote Amount</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -418,7 +418,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {request.quote?.currency === 'USD' ? '$' : '₹'}{request.quote?.total_cost}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           request.quote?.is_approved === true 
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
@@ -451,7 +451,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
       {activeTab === 'feedback' && user.role === Role.Admin && (
         <div className="space-y-6">
-           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Recent Customer Feedback</h2>
+           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Recent Customer Feedback</h2>
            {loading ? <div className="flex justify-center items-center h-64"><Spinner /></div> : <FeedbackList feedback={feedback} />}
         </div>
       )}

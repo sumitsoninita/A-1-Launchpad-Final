@@ -118,8 +118,8 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
     if (activeTab === 'complaints') {
       return (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Complaints Management</h2>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Complaints Management</h2>
           </div>
           
           {loading ? (
@@ -136,30 +136,30 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
     if (activeTab === 'requests') {
       return (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Service Requests</h2>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Service Requests</h2>
             <button
               onClick={fetchData}
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
+              className="px-3 sm:px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors text-sm sm:text-base"
             >
               Refresh Data
             </button>
           </div>
 
           {/* Filters and Search */}
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
             <input
                 type="text"
                 placeholder="Search by S/N, Customer, ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-1/3 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="w-full sm:w-1/3 px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
             />
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                 <select 
                   value={statusFilter} 
                   onChange={e => setStatusFilter(e.target.value)} 
-                  className="w-full sm:w-auto px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                 >
                     <option value="all">All Statuses</option>
                     <option value="Received">Received</option>
@@ -174,7 +174,7 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
                 <select 
                   value={eprStatusFilter} 
                   onChange={e => setEprStatusFilter(e.target.value)} 
-                  className="w-full sm:w-auto px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                 >
                     <option value="all">All EPR Statuses</option>
                     <option value="Cost Estimation Preparation">Cost Estimation Preparation</option>
@@ -360,11 +360,11 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">EPR Team Dashboard</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">EPR Team Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
             Welcome, {user.fullName || user.email}. Manage complaints and coordinate with service team.
           </p>
         </div>
@@ -373,10 +373,10 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
 
       {/* Navigation Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex flex-wrap space-x-2 sm:space-x-8">
           <button
             onClick={() => setActiveTab('complaints')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 sm:py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
               activeTab === 'complaints'
                 ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
@@ -386,7 +386,7 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
           </button>
           <button
             onClick={() => setActiveTab('requests')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 sm:py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
               activeTab === 'requests'
                 ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
@@ -396,7 +396,7 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
           </button>
           <button
             onClick={() => setActiveTab('integration')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 sm:py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
               activeTab === 'integration'
                 ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
@@ -406,7 +406,7 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
           </button>
           <button
             onClick={() => setActiveTab('quotation-history')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 sm:py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
               activeTab === 'quotation-history'
                 ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
