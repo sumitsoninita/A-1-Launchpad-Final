@@ -672,14 +672,14 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                     {request.quote.items.map((item, i) => (
                         <div key={i} className="flex justify-between">
                             <span>{item.description}</span>
-                            <span>${item.cost.toFixed(2)}</span>
+                            <span>{request.quote.currency === 'USD' ? '$' : '₹'}{item.cost.toFixed(2)}</span>
                         </div>
                     ))}
                 </div>
                 <hr className="my-4 border-gray-300 dark:border-gray-600"/>
                 <div className="flex justify-between font-bold text-lg">
                     <span>Total Cost</span>
-                    <span>${request.quote.total_cost.toFixed(2)}</span>
+                    <span>{request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost.toFixed(2)}</span>
                 </div>
                 <div className="mt-6 text-center">
                     {request.quote.is_approved === null && user.role === Role.Customer && (
@@ -1213,14 +1213,14 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
       <p className="text-center font-mono text-sm text-gray-500 dark:text-gray-400 mb-4">ID: {request.id.slice(-12)}</p>
 
       {/* Assignment Information */}
-      {request.assigned_to && (
+      {request.assigned_service_team && (
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-center justify-center">
             <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
             <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-              Assigned to: <span className="font-semibold">{request.assigned_to}</span>
+              Assigned to: <span className="font-semibold">{request.assigned_service_team}</span>
             </span>
           </div>
         </div>

@@ -393,6 +393,9 @@ export const api = {
             
             if (error) throw error;
             
+            console.log('API: getServiceRequestById - Raw request data:', request);
+            console.log('API: getServiceRequestById - EPR currency:', request?.epr_cost_estimation_currency);
+            
             return request ? {
                 ...request,
                 quote: request.quotes?.[0] || null,

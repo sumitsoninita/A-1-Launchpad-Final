@@ -25,6 +25,8 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
           setRequest(requestData);
           // Set currency based on EPR cost estimation currency
           const eprCurrency = requestData.epr_cost_estimation_currency || 'INR';
+          console.log('QuoteForm: EPR currency from request:', requestData.epr_cost_estimation_currency);
+          console.log('QuoteForm: Using currency:', eprCurrency);
           setItems([{ description: '', cost: 0, currency: eprCurrency }]);
         }
       } catch (error) {
@@ -81,6 +83,9 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ requestId, onClose, onSubmitSucce
         currency: items[0]?.currency || 'INR',
         payment_qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PaymentFor${requestId}Amount${totalCost}`
     };
+
+    console.log('QuoteForm: Submitting quote with currency:', quoteData.currency);
+    console.log('QuoteForm: Quote data:', quoteData);
 
     try {
         await api.addQuoteToRequest(requestId, quoteData, currentUser.email);

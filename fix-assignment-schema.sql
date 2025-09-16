@@ -7,7 +7,8 @@
 -- Add new assignment fields
 ALTER TABLE service_requests 
 ADD COLUMN IF NOT EXISTS assigned_service_team TEXT,
-ADD COLUMN IF NOT EXISTS assigned_epr_team TEXT;
+ADD COLUMN IF NOT EXISTS assigned_epr_team TEXT,
+ADD COLUMN IF NOT EXISTS epr_cost_estimation_currency TEXT CHECK (epr_cost_estimation_currency IN ('INR', 'USD'));
 
 -- Update existing data to populate the new fields
 -- Extract service team assignment from assigned_to field
@@ -48,6 +49,7 @@ SELECT
     assigned_to,
     assigned_service_team,
     assigned_epr_team,
+    epr_cost_estimation_currency,
     created_at
 FROM service_requests 
 WHERE status IN ('Diagnosis', 'Awaiting Approval', 'Repair in Progress', 'Quality Check', 'Completed', 'Cancelled')
