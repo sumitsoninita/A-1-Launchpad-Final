@@ -70,7 +70,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
     } catch (err: any) {
         setError(err.message);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
   
@@ -966,7 +966,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
         timestamp: request.quote.created_at,
         type: 'quote_created',
         action: 'Quote Generated',
-        user: 'Service Team',
+        user: user.email,
         details: `Quote generated with total cost: ${request.quote.currency === 'USD' ? '$' : '₹'}${request.quote.total_cost}`,
         quote_amount: request.quote.total_cost,
         quote_currency: request.quote.currency,
@@ -1210,7 +1210,21 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
       </button>
 
       <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-800 dark:text-white mb-2">Service Request Details</h2>
-      <p className="text-center font-mono text-sm text-gray-500 dark:text-gray-400 mb-8">ID: {request.id.slice(-12)}</p>
+      <p className="text-center font-mono text-sm text-gray-500 dark:text-gray-400 mb-4">ID: {request.id.slice(-12)}</p>
+
+      {/* Assignment Information */}
+      {request.assigned_to && (
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center justify-center">
+            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+              Assigned to: <span className="font-semibold">{request.assigned_to}</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Status Timeline */}
       <div className="mb-8">

@@ -26,9 +26,13 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
     setLoading(true);
     setError(null);
     try {
+      // Get only requests assigned to this EPR team member
+      const assignedRequests = await api.getServiceRequestsForTeamMember(user.email, user.role);
+      console.log(`EPR Dashboard (${user.email}): Total assigned requests:`, assignedRequests.length);
+      console.log(`EPR Dashboard (${user.email}): Assigned requests:`, assignedRequests.map(r => ({ id: r.id.slice(-8), status: r.status, assigned_to: r.assigned_to })));
+      
       // EPR team can only see requests with "Diagnosis" status and beyond
-      const allRequests = await api.getServiceRequests();
-      const eprRequests = allRequests.filter(req => 
+      const eprRequests = assignedRequests.filter(req => 
         req.status === 'Diagnosis' || 
         req.status === 'Awaiting Approval' || 
         req.status === 'Repair in Progress' || 
@@ -36,17 +40,20 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
         req.status === 'Completed' ||
         req.status === 'Cancelled'
       );
+      console.log(`EPR Dashboard (${user.email}): Filtered EPR requests:`, eprRequests.length);
+      console.log(`EPR Dashboard (${user.email}): EPR requests:`, eprRequests.map(r => ({ id: r.id.slice(-8), status: r.status, assigned_to: r.assigned_to })));
       setRequests(eprRequests);
       
       // EPR team can see all complaints (like service team)
       const complaintsData = await api.getComplaints();
       setComplaints(complaintsData);
     } catch (err: any) {
+      console.error(`EPR Dashboard (${user.email}): Error fetching data:`, err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.email, user.role]);
 
   useEffect(() => {
     fetchData();
@@ -362,6 +369,7 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
           </p>
         </div>
       </div>
+
 
       {/* Navigation Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">

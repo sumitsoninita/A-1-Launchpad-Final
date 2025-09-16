@@ -255,16 +255,24 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                         <span>admin@test.com / admin123</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Service:</span>
-                        <span>service@test.com / service123</span>
+                        <span>Service (Mukesh):</span>
+                        <span>mukesh@test.com / mukesh123</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Service (Suresh):</span>
+                        <span>suresh@test.com / suresh123</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Partner:</span>
                         <span>partner@test.com / partner123</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>EPR:</span>
-                        <span>epr@test.com / epr123</span>
+                        <span>EPR (Mohit):</span>
+                        <span>mohit@test.com / mohit123</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>EPR (Rohit):</span>
+                        <span>rohit@test.com / rohit123</span>
                       </div>
                     </div>
                   </div>

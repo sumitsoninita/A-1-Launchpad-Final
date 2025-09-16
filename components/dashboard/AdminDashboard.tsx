@@ -35,7 +35,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     setLoading(true);
     setError(null);
     try {
-      const requestData = await api.getServiceRequests();
+      // Use filtered requests for team members, all requests for admin
+      const requestData = await api.getServiceRequestsForTeamMember(user.email, user.role);
       setRequests(requestData);
       const feedbackData = await api.getFeedback();
       setFeedback(feedbackData);
@@ -46,7 +47,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.email, user.role]);
 
   useEffect(() => {
     fetchData();
@@ -108,6 +109,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Management Dashboard</h1>
       <p className="text-gray-500 dark:text-gray-400">Welcome, {user.email}. Role: <span className="font-semibold capitalize">{user.role.replace('_', ' ')}</span></p>
+      
       
        {(user.role === Role.Admin || user.role === Role.Service) && (
         <div className="border-b border-gray-200 dark:border-gray-700">

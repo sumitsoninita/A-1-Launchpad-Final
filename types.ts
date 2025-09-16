@@ -89,6 +89,8 @@ export interface ServiceRequest {
   created_at: string;
   updated_at: string;
   assigned_to?: string;
+  assigned_service_team?: string;
+  assigned_epr_team?: string;
   notes?: string[];
   quote?: Quote | null;
   geolocation?: string | null;

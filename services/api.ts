@@ -64,9 +64,11 @@ export const api = {
                         // In a real app, you'd want proper password hashing
                         const validPasswords: { [key: string]: string } = {
                             'admin@test.com': 'admin123',
-                            'service@test.com': 'service123',
+                            'mukesh@test.com': 'mukesh123',
+                            'suresh@test.com': 'suresh123',
                             'partner@test.com': 'partner123',
-                            'epr@test.com': 'epr123'
+                            'mohit@test.com': 'mohit123',
+                            'rohit@test.com': 'rohit123'
                         };
                         
                         if (validPasswords[email.toLowerCase()] === password) {
@@ -454,6 +456,10 @@ export const api = {
                 imageUrls = await this.uploadImages(imageFiles, requestId);
             }
             
+            // Get assigned service team member using round-robin
+            const assignedServiceMember = await this.getNextServiceTeamMember();
+            console.log(`Service request ${requestId} assigned to service team: ${assignedServiceMember}`);
+            
             const { data: newRequest, error } = await supabase
                 .from('service_requests')
                 .insert({
@@ -461,6 +467,9 @@ export const api = {
                     ...requestData,
                     image_urls: imageUrls,
                     status: 'Received',
+                    assigned_to: assignedServiceMember, // Keep for backward compatibility
+                    assigned_service_team: assignedServiceMember,
+                    assigned_epr_team: null, // EPR assignment happens later
                     audit_log: auditLog
                 })
                 .select()
@@ -480,10 +489,10 @@ export const api = {
 
     async updateRequestStatus(requestId: string, status: Status, userEmail: string): Promise<ServiceRequest> {
         try {
-            // First get the current request to update audit log
+            // First get the current request to update audit log and check current assignment
             const { data: currentRequest, error: fetchError } = await supabase
                 .from('service_requests')
-                .select('audit_log')
+                .select('audit_log, assigned_to')
                 .eq('id', requestId)
                 .single();
             
@@ -505,12 +514,32 @@ export const api = {
                 }
             ];
             
+            // If status is being updated to 'Diagnosis', assign an EPR team member
+            let updateData: any = {
+                status: status,
+                audit_log: updatedAuditLog
+            };
+            
+            if (status === 'Diagnosis') {
+                // Check if an EPR member is already assigned, if not, assign one
+                const currentAssignedTo = currentRequest.assigned_to;
+                if (!currentAssignedTo || (!currentAssignedTo.includes('mohit') && !currentAssignedTo.includes('rohit'))) {
+                    const assignedEPRMember = await this.getNextEPRTeamMember();
+                    updateData.assigned_epr_team = assignedEPRMember;
+                    // Update the main assigned_to field for backward compatibility
+                    if (currentAssignedTo && (currentAssignedTo.includes('mukesh') || currentAssignedTo.includes('suresh'))) {
+                        updateData.assigned_to = `${currentAssignedTo}, ${assignedEPRMember}`;
+                        console.log(`EPR request ${requestId} assigned to: ${currentAssignedTo} (service) + ${assignedEPRMember} (EPR) when status changed to Diagnosis`);
+                    } else {
+                        updateData.assigned_to = assignedEPRMember;
+                        console.log(`EPR request ${requestId} assigned to: ${assignedEPRMember} when status changed to Diagnosis`);
+                    }
+                }
+            }
+            
             const { data: updatedRequest, error } = await supabase
                 .from('service_requests')
-                .update({
-                    status: status,
-                    audit_log: updatedAuditLog
-                })
+                .update(updateData)
                 .eq('id', requestId)
                 .select(`
                     *,
@@ -788,6 +817,82 @@ export const api = {
         }
     },
 
+    async getServiceRequestsForTeamMember(userEmail: string, userRole: string): Promise<ServiceRequest[]> {
+        try {
+            let query = supabase
+                .from('service_requests')
+                .select(`
+                    *,
+                    quotes (*)
+                `)
+                .order('created_at', { ascending: false });
+
+            // Filter based on role and assignment
+            if (userRole === 'service') {
+                // Service team members see only requests assigned to them
+                query = query.eq('assigned_service_team', userEmail);
+                console.log(`API: Filtering for service team member: ${userEmail}`);
+            } else if (userRole === 'epr') {
+                // EPR team members see only requests assigned to them
+                query = query.eq('assigned_epr_team', userEmail);
+                console.log(`API: Filtering for EPR team member: ${userEmail}`);
+            } else if (userRole === 'admin') {
+                // Admin sees all requests (no filter)
+                console.log(`API: Admin user - no filtering applied`);
+                // query remains unchanged
+            } else {
+                // For other roles, return empty array
+                console.log(`API: Unknown role ${userRole} - returning empty array`);
+                return [];
+            }
+
+            const { data: requests, error } = await query;
+            
+            if (error) throw error;
+            
+            console.log(`API: Found ${requests?.length || 0} requests for ${userEmail} (${userRole})`);
+            if (requests && requests.length > 0) {
+                console.log(`API: Request assignments:`, requests.map(r => ({ id: r.id.slice(-8), status: r.status, assigned_to: r.assigned_to })));
+            }
+            
+            return (requests || []).map(req => ({
+                ...req,
+                quote: req.quotes?.[0] || null,
+                epr_timeline: req.epr_timeline || [],
+                current_epr_status: req.current_epr_status || null,
+                epr_cost_estimation_currency: req.epr_cost_estimation_currency || null
+            })) || [];
+        } catch (error) {
+            console.error('Error fetching service requests for team member:', error);
+            return [];
+        }
+    },
+
+    // --- Team Assignment Methods ---
+    async getNextServiceTeamMember(): Promise<string> {
+        try {
+            const { data, error } = await supabase.rpc('get_next_service_team_member');
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error getting next service team member:', error);
+            // Fallback to mukesh if function fails
+            return 'mukesh@test.com';
+        }
+    },
+
+    async getNextEPRTeamMember(): Promise<string> {
+        try {
+            const { data, error } = await supabase.rpc('get_next_epr_team_member');
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error getting next EPR team member:', error);
+            // Fallback to mohit if function fails
+            return 'mohit@test.com';
+        }
+    },
+
     // --- EPR Team Methods ---
     async updateEPRStatus(
         requestId: string, 
@@ -823,6 +928,13 @@ export const api = {
             // Get existing EPR timeline or create new one
             const existingTimeline = currentRequest.epr_timeline || [];
             const updatedTimeline = [...existingTimeline, newTimelineEntry];
+            
+            // If this is the first EPR action and no EPR member is assigned, assign one using round-robin
+            let eprAssignedMember = currentRequest.assigned_epr_team;
+            if (existingTimeline.length === 0 && eprStatus === EPRStatus.CostEstimationPreparation && !eprAssignedMember) {
+                eprAssignedMember = await this.getNextEPRTeamMember();
+                console.log(`EPR request ${requestId} assigned to: ${eprAssignedMember}`);
+            }
 
             // Create audit log entry for EPR action
             const auditLogEntry = {
@@ -875,6 +987,17 @@ export const api = {
             // Store EPR cost estimation currency if provided
             if (costEstimationCurrency) {
                 updateData.epr_cost_estimation_currency = costEstimationCurrency;
+            }
+            
+            // Update assigned member if EPR assignment was made
+            if (eprAssignedMember !== currentRequest.assigned_epr_team) {
+                updateData.assigned_epr_team = eprAssignedMember;
+                // Update the main assigned_to field for backward compatibility
+                if (currentRequest.assigned_to && (currentRequest.assigned_to.includes('mukesh') || currentRequest.assigned_to.includes('suresh'))) {
+                    updateData.assigned_to = `${currentRequest.assigned_to}, ${eprAssignedMember}`;
+                } else {
+                    updateData.assigned_to = eprAssignedMember;
+                }
             }
             
             const { data: updatedRequest, error: updateError } = await supabase
