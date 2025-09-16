@@ -1358,6 +1358,7 @@ export const api = {
                 complaints: complaints?.length || 0
             });
 
+
             // Transform data for CSV export
             const csvData = (requests || []).map(request => {
                 // Find related payment
@@ -1375,6 +1376,7 @@ export const api = {
                     complaint.request_id === request.id
                 );
 
+
                 return {
                     'Customer Name': request.customer_name || '',
                     'Customer Email': request.app_users?.email || '',
@@ -1386,7 +1388,7 @@ export const api = {
                     'Fault Description': request.fault_description || '',
                     'Customer Phone Number': request.customer_phone || '',
                     'Is Warranty Claimed': request.is_warranty_claim ? 'Yes' : 'No',
-                    'Is Resolved': relatedComplaint ? (relatedComplaint.is_resolved ? 'Yes' : 'No') : 'N/A',
+                    'Is Resolved': (request.status === 'Completed' || request.status === 'Dispatched') ? 'Yes' : 'No',
                     'Quote Is Approved': request.quotes?.[0]?.is_approved === true ? 'Yes' : 
                                        request.quotes?.[0]?.is_approved === false ? 'No' : 'Pending',
                     'Rating': relatedFeedback?.rating || '',
@@ -1403,7 +1405,21 @@ export const api = {
                 };
             });
 
+            // Calculate statistics
+            const stats = {
+                totalRequests: csvData.length,
+                resolvedRequests: csvData.filter(row => row['Is Resolved'] === 'Yes').length,
+                unresolvedRequests: csvData.filter(row => row['Is Resolved'] === 'No').length,
+                withComplaints: csvData.filter(row => {
+                    const relatedComplaint = (complaints || []).find(complaint => 
+                        complaint.request_id === row['Service Request ID']
+                    );
+                    return relatedComplaint !== undefined;
+                }).length
+            };
+
             console.log('CSV data prepared:', csvData.length, 'records');
+            console.log('Request resolution statistics:', stats);
             return csvData;
         } catch (error) {
             console.error('Error fetching CSV export data:', error);
