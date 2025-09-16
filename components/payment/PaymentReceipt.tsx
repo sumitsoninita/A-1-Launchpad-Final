@@ -16,38 +16,239 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = ({
   orderId,
   onClose
 }) => {
+  const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
   const handlePrint = () => {
     window.print();
   };
 
-  const handleDownload = () => {
-    const receiptData = {
-      receipt_number: `RCP-${Date.now()}`,
-      payment_id: paymentId,
-      order_id: orderId,
-      customer_name: request.customer_name,
-      customer_id: request.customer_id,
-      service_request_id: request.id,
-      serial_number: request.serial_number,
-      product_type: request.product_type,
-      quote_items: quote.items,
-      total_amount: quote.total_cost,
-      currency: quote.currency,
-      payment_date: new Date().toISOString(),
-      company_name: 'A-1 Fence Services',
-      company_address: 'Your Company Address',
-      company_phone: 'Your Company Phone',
-      company_email: 'Your Company Email'
-    };
-
-    const dataStr = JSON.stringify(receiptData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `payment-receipt-${request.id}-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    console.log('handleDownload function called!');
+    setIsGeneratingPDF(true);
+    try {
+      console.log('Starting PDF generation...');
+      
+      // Dynamically import jsPDF
+      const { jsPDF } = await import('jspdf');
+      console.log('jsPDF imported successfully:', typeof jsPDF);
+      
+      // Create a new PDF document
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      console.log('PDF document created, page size:', pageWidth, 'x', pageHeight);
+      
+      // Colors for the invoice
+      const primaryColor = [220, 38, 38]; // Red-600
+      const secondaryColor = [245, 158, 11]; // Amber-500
+      const darkColor = [31, 41, 55]; // Gray-800
+      const lightGray = [243, 244, 246]; // Gray-100
+      const white = [255, 255, 255]; // White
+      const successGreen = [34, 197, 94]; // Green-500
+      
+      // Header Section with gradient effect
+      pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      pdf.rect(0, 0, pageWidth, 50, 'F');
+      
+      // Add subtle border
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.rect(0, 0, pageWidth, 50);
+      
+      // Company Logo/Name with better typography
+      pdf.setTextColor(white[0], white[1], white[2]);
+      pdf.setFontSize(28);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('A-1 Fence Services', 25, 30);
+      
+      // Subtitle
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Professional Fence Solutions', 25, 37);
+      
+      // Invoice Title with better styling
+      pdf.setTextColor(white[0], white[1], white[2]);
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('PAYMENT INVOICE', pageWidth - 25, 30, { align: 'right' });
+      
+      // Receipt Number with better formatting
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Receipt #: RCP-${Date.now()}`, pageWidth - 25, 40, { align: 'right' });
+      
+      // Date and Time with better spacing
+      const currentDate = new Date().toLocaleDateString();
+      const currentTime = new Date().toLocaleTimeString();
+      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Date: ${currentDate}`, 25, 65);
+      pdf.text(`Time: ${currentTime}`, 25, 70);
+      
+      // Payment Status Badge with rounded corners effect
+      pdf.setFillColor(successGreen[0], successGreen[1], successGreen[2]);
+      pdf.rect(pageWidth - 55, 60, 50, 18, 'F');
+      pdf.setTextColor(white[0], white[1], white[2]);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('PAID', pageWidth - 30, 72, { align: 'center' });
+      
+      // Customer Information Section with better styling
+      pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      pdf.rect(20, 85, (pageWidth - 50) / 2, 8, 'F');
+      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Customer Information', 25, 91);
+      
+      // Customer details with better formatting
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Name: ${request.customer_name}`, 25, 100);
+      pdf.text(`Customer ID: ${request.customer_id}`, 25, 105);
+      pdf.text(`Service Request: #${request.id.slice(-8)}`, 25, 110);
+      pdf.text(`Serial Number: ${request.serial_number}`, 25, 115);
+      
+      // Payment Information Section with better styling
+      pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      pdf.rect(pageWidth / 2 + 5, 85, (pageWidth - 50) / 2, 8, 'F');
+      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Payment Information', pageWidth / 2 + 10, 91);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Payment ID: ${paymentId.slice(-12)}`, pageWidth / 2 + 10, 100);
+      pdf.text(`Order ID: ${orderId.slice(-12)}`, pageWidth / 2 + 10, 105);
+      pdf.text(`Payment Date: ${currentDate}`, pageWidth / 2 + 10, 110);
+      pdf.text(`Payment Time: ${currentTime}`, pageWidth / 2 + 10, 115);
+      
+      // Service Details Section with better styling
+      pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      pdf.rect(20, 125, pageWidth - 40, 8, 'F');
+      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Service Details', 25, 131);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Product Type: ${request.product_type}`, 25, 140);
+      pdf.text(`Product Details: ${request.product_details}`, 25, 145);
+      pdf.text(`Purchase Date: ${new Date(request.purchase_date).toLocaleDateString()}`, 25, 150);
+      
+      // Invoice Items Table Header with better styling
+      pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      pdf.rect(20, 160, pageWidth - 40, 12, 'F');
+      
+      pdf.setTextColor(white[0], white[1], white[2]);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Description', 25, 168);
+      pdf.text('Amount', pageWidth - 25, 168, { align: 'right' });
+      
+      // Invoice Items with alternating row colors
+      let yPosition = 172;
+      quote.items.forEach((item, index) => {
+        if (yPosition > pageHeight - 50) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        // Alternate row colors
+        if (index % 2 === 0) {
+          pdf.setFillColor(250, 250, 250); // Very light gray
+          pdf.rect(20, yPosition - 2, pageWidth - 40, 10, 'F');
+        }
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+        pdf.text(item.description, 25, yPosition + 2);
+        pdf.text(`${item.currency === 'USD' ? '$' : '₹'}${item.cost}`, pageWidth - 25, yPosition + 2, { align: 'right' });
+        yPosition += 10;
+      });
+      
+      // Total Amount Section with enhanced styling
+      yPosition += 5;
+      pdf.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      pdf.rect(20, yPosition, pageWidth - 40, 15, 'F');
+      
+      // Add border to total section
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.rect(20, yPosition, pageWidth - 40, 15);
+      
+      pdf.setTextColor(white[0], white[1], white[2]);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('TOTAL AMOUNT', 25, yPosition + 10);
+      pdf.text(`${quote.currency === 'USD' ? '$' : '₹'}${quote.total_cost}`, pageWidth - 25, yPosition + 10, { align: 'right' });
+      
+      // Payment Confirmation Section with enhanced styling
+      yPosition += 25;
+      pdf.setFillColor(240, 253, 244); // Green-50
+      pdf.rect(20, yPosition, pageWidth - 40, 25, 'F');
+      
+      // Add border to confirmation section
+      pdf.setDrawColor(34, 197, 94); // Green-500
+      pdf.setLineWidth(1);
+      pdf.rect(20, yPosition, pageWidth - 40, 25);
+      
+      pdf.setTextColor(22, 163, 74); // Green-600
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('✓ Payment Successful', 25, yPosition + 10);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Your payment has been processed successfully. Your service request is now being processed.', 25, yPosition + 18);
+      
+      // Footer with better styling
+      yPosition = pageHeight - 40;
+      
+      // Footer background
+      pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      pdf.rect(0, yPosition, pageWidth, 40, 'F');
+      
+      // Footer border
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.rect(0, yPosition, pageWidth, 40);
+      
+      pdf.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Thank you for choosing A-1 Fence Services!', pageWidth / 2, yPosition + 10, { align: 'center' });
+      
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('For any queries, please contact us at support@a1fenceservices.com', pageWidth / 2, yPosition + 18, { align: 'center' });
+      
+      // Company Information
+      pdf.setFontSize(8);
+      pdf.setTextColor(107, 114, 128); // Gray-500
+      pdf.text('A-1 Fence Services | Professional Fence Solutions', pageWidth / 2, yPosition + 30, { align: 'center' });
+      
+      console.log('PDF content added, saving file...');
+      
+      // Save the PDF
+      const fileName = `payment-invoice-${request.id.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+      
+      console.log('PDF saved successfully:', fileName);
+      
+      // Show success message
+      alert('PDF invoice downloaded successfully!');
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   return (
@@ -200,9 +401,20 @@ const PaymentReceipt: React.FC<PaymentReceiptProps> = ({
           </button>
           <button
             onClick={handleDownload}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+            disabled={isGeneratingPDF}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-md transition-colors flex items-center space-x-2"
           >
-            📥 Download Receipt
+            {isGeneratingPDF ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Generating PDF...</span>
+              </>
+            ) : (
+              <>
+                <span>📄</span>
+                <span>Download PDF Invoice</span>
+              </>
+            )}
           </button>
           <button
             onClick={onClose}

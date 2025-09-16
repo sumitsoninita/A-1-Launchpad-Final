@@ -130,8 +130,29 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
 
     // EPR integration stats
     const eprRequests = requests.filter(req => req.current_epr_status);
+    
+    // Debug EPR data
+    console.log('EPR Debug Info:', {
+      totalRequests: requests.length,
+      eprRequests: eprRequests.length,
+      eprStatuses: eprRequests.map(req => ({
+        id: req.id,
+        status: req.current_epr_status
+      }))
+    });
+    
+    const eprInProgress = eprRequests.filter(req => 
+      req.current_epr_status === 'Cost Estimation Preparation' || 
+      req.current_epr_status === 'Awaiting Approval' ||
+      req.current_epr_status === 'Approved' ||
+      req.current_epr_status === 'Repair in Progress'
+    );
+    const eprCompleted = eprRequests.filter(req => 
+      req.current_epr_status === 'Repair Completed' || 
+      req.current_epr_status === 'Return to Customer'
+    );
     const eprCompletionRate = eprRequests.length > 0 
-      ? (eprRequests.filter(req => req.current_epr_status === 'Cost Estimation Preparation').length / eprRequests.length) * 100 
+      ? (eprCompleted.length / eprRequests.length) * 100 
       : 0;
 
     // Quote statistics
@@ -161,7 +182,8 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
       ],
       eprStats: {
         total: eprRequests.length,
-        completed: eprRequests.filter(req => req.current_epr_status === 'Cost Estimation Preparation').length,
+        inProgress: eprInProgress.length,
+        completed: eprCompleted.length,
         rate: eprCompletionRate
       },
       quoteStats: {
@@ -334,10 +356,14 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
           gradient="from-red-800 to-red-900"
         >
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl">
                 <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{analytics.eprStats.total}</div>
                 <div className="text-sm text-blue-600 dark:text-blue-400">Total EPR Requests</div>
+              </div>
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-xl">
+                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{analytics.eprStats.inProgress}</div>
+                <div className="text-sm text-amber-600 dark:text-amber-400">In Progress</div>
               </div>
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl">
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">{analytics.eprStats.completed}</div>
