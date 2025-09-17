@@ -199,78 +199,55 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-red-50 to-amber-50 dark:from-gray-900 dark:via-red-900/20 dark:to-amber-900/20">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-red-800 via-red-700 to-amber-800 rounded-2xl shadow-2xl mb-8">
+      <div className="relative overflow-hidden bg-gradient-to-r from-red-800 via-red-700 to-amber-800 rounded-2xl shadow-2xl mb-6 sm:mb-8">
         <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative px-8 py-12">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-3">Analytics Dashboard</h1>
-              <p className="text-red-100 text-lg">Comprehensive insights into your service operations</p>
-              <div className="flex items-center mt-4 space-x-6">
+        <div className="relative px-4 sm:px-6 md:px-8 py-8 sm:py-10 md:py-12">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="text-center lg:text-left">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">Analytics Dashboard</h1>
+              <p className="text-red-100 text-sm sm:text-base md:text-lg">Comprehensive insights into your service operations</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start mt-4 space-y-2 sm:space-y-0 sm:space-x-6">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse"></div>
-                  <span className="text-white text-sm">Live Data</span>
+                  <span className="text-white text-xs sm:text-sm">Live Data</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                  <span className="text-white text-sm">Real-time Updates</span>
+                  <span className="text-white text-xs sm:text-sm">Real-time Updates</span>
                 </div>
               </div>
-              
-              {/* Mobile Download Button */}
-              <div className="md:hidden mt-4">
-                <button
-                  onClick={downloadCSV}
-                  disabled={isDownloading}
-                  className="w-full px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/30 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isDownloading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Downloading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span>Download Sheet</span>
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
-            <div className="hidden md:block">
-              <div className="text-right">
-                <div className="text-3xl font-bold text-white">{requests.length}</div>
-                <div className="text-red-100">Total Requests</div>
-                <button
-                  onClick={downloadCSV}
-                  disabled={isDownloading}
-                  className="mt-4 px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/30 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isDownloading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Downloading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span>Download Sheet</span>
-                    </>
-                  )}
-                </button>
+            <div className="flex flex-col sm:flex-row lg:flex-col items-center gap-4 lg:gap-0">
+              <div className="text-center lg:text-right">
+                <div className="text-2xl sm:text-3xl font-bold text-white">{requests.length}</div>
+                <div className="text-red-100 text-sm sm:text-base">Total Requests</div>
               </div>
+              <button
+                onClick={downloadCSV}
+                disabled={isDownloading}
+                className="w-full sm:w-auto px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/30 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+              >
+                {isDownloading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Downloading...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Download Sheet</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <MetricCard 
           title="Completion Rate" 
           value={`${analytics.completionRate.toFixed(1)}%`}
@@ -305,7 +282,7 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
       </div>
 
       {/* Main Analytics Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
         <div className="space-y-8">
           <ChartCard 
             title="Service Requests by Status" 
@@ -348,37 +325,37 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
       </div>
 
       {/* EPR and Quote Statistics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         <ChartCard 
           title="EPR Integration Status" 
           subtitle="External Product Repair workflow"
           icon="⚙"
           gradient="from-red-800 to-red-900"
         >
-          <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{analytics.eprStats.total}</div>
-                <div className="text-sm text-blue-600 dark:text-blue-400">Total EPR Requests</div>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-3 sm:p-4 rounded-xl">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{analytics.eprStats.total}</div>
+                <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">Total EPR Requests</div>
               </div>
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-xl">
-                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{analytics.eprStats.inProgress}</div>
-                <div className="text-sm text-amber-600 dark:text-amber-400">In Progress</div>
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-3 sm:p-4 rounded-xl">
+                <div className="text-lg sm:text-2xl font-bold text-amber-600 dark:text-amber-400">{analytics.eprStats.inProgress}</div>
+                <div className="text-xs sm:text-sm text-amber-600 dark:text-amber-400">In Progress</div>
               </div>
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl">
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{analytics.eprStats.completed}</div>
-                <div className="text-sm text-green-600 dark:text-green-400">Completed</div>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-3 sm:p-4 rounded-xl">
+                <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{analytics.eprStats.completed}</div>
+                <div className="text-xs sm:text-sm text-green-600 dark:text-green-400">Completed</div>
               </div>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">EPR Completion Rate</span>
-                <span className="text-sm font-bold text-gray-800 dark:text-white">{analytics.eprStats.rate.toFixed(1)}%</span>
+                <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">EPR Completion Rate</span>
+                <span className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white">{analytics.eprStats.rate.toFixed(1)}%</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 sm:h-3 overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-1000 ease-out shadow-sm" 
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 sm:h-3 rounded-full transition-all duration-1000 ease-out shadow-sm" 
                   style={{ width: `${analytics.eprStats.rate}%` }}
                 ></div>
               </div>
@@ -392,30 +369,30 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ requests, feedback = 
           icon="📋"
           gradient="from-amber-600 to-amber-800"
         >
-          <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{analytics.quoteStats.approved}</div>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{analytics.quoteStats.approved}</div>
                 <div className="text-xs text-green-600 dark:text-green-400 font-medium">Approved</div>
               </div>
-              <div className="text-center p-4 bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 rounded-xl border border-red-200 dark:border-red-800">
-                <div className="text-2xl font-bold text-red-600 dark:text-red-400">{analytics.quoteStats.rejected}</div>
+              <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                <div className="text-lg sm:text-2xl font-bold text-red-600 dark:text-red-400">{analytics.quoteStats.rejected}</div>
                 <div className="text-xs text-red-600 dark:text-red-400 font-medium">Rejected</div>
               </div>
-              <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
-                <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{analytics.quoteStats.pending}</div>
+              <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+                <div className="text-lg sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">{analytics.quoteStats.pending}</div>
                 <div className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Pending</div>
               </div>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Quote Approval Rate</span>
-                <span className="text-sm font-bold text-gray-800 dark:text-white">{analytics.quoteStats.approvalRate.toFixed(1)}%</span>
+                <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Quote Approval Rate</span>
+                <span className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white">{analytics.quoteStats.approvalRate.toFixed(1)}%</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 sm:h-3 overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-emerald-500 to-green-600 h-3 rounded-full transition-all duration-1000 ease-out shadow-sm" 
+                  className="bg-gradient-to-r from-emerald-500 to-green-600 h-2 sm:h-3 rounded-full transition-all duration-1000 ease-out shadow-sm" 
                   style={{ width: `${analytics.quoteStats.approvalRate}%` }}
                 ></div>
               </div>
@@ -478,22 +455,22 @@ const MetricCard: React.FC<{
   };
 
   return (
-    <div className="group bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <div className="group bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       <div className="flex items-start justify-between h-full">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2 mb-3">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">{title}</p>
+          <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">{title}</p>
             {trend && (
               <span className="text-xs flex-shrink-0">{trendIcons[trend]}</span>
             )}
           </div>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">{value}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 leading-tight">{value}</p>
           {subtitle && (
             <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{subtitle}</p>
           )}
         </div>
-        <div className={`p-3 rounded-xl border-2 ${colorClasses[color]} group-hover:scale-110 transition-transform duration-300 flex-shrink-0 ml-4`}>
-          <span className="text-2xl block">{icon}</span>
+        <div className={`p-2 sm:p-3 rounded-xl border-2 ${colorClasses[color]} group-hover:scale-110 transition-transform duration-300 flex-shrink-0 ml-3 sm:ml-4`}>
+          <span className="text-lg sm:text-2xl block">{icon}</span>
         </div>
       </div>
     </div>
@@ -507,18 +484,18 @@ const ChartCard: React.FC<{
   gradient?: string;
   children: React.ReactNode 
 }> = ({ title, subtitle, icon, gradient, children }) => (
-  <div className="group bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-    <div className="mb-6">
-      <div className="flex items-center space-x-3 mb-2">
+  <div className="group bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <div className="mb-4 sm:mb-6">
+      <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
         {icon && (
-          <div className={`p-2 rounded-lg bg-gradient-to-r ${gradient || 'from-blue-500 to-purple-600'} text-white shadow-md`}>
-            <span className="text-lg">{icon}</span>
+          <div className={`p-1.5 sm:p-2 rounded-lg bg-gradient-to-r ${gradient || 'from-blue-500 to-purple-600'} text-white shadow-md`}>
+            <span className="text-sm sm:text-lg">{icon}</span>
           </div>
         )}
-        <h3 className="text-xl font-bold text-gray-800 dark:text-white">{title}</h3>
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">{title}</h3>
       </div>
       {subtitle && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 ml-11">{subtitle}</p>
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 ml-8 sm:ml-11">{subtitle}</p>
       )}
     </div>
     <div className="relative">
@@ -540,9 +517,9 @@ const PieChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
   const centerY = 110;
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8">
       <div className="relative">
-        <svg width="220" height="220" viewBox="0 0 220 220" className="transform -rotate-90">
+        <svg width="180" height="180" viewBox="0 0 220 220" className="transform -rotate-90 sm:w-[220px] sm:h-[220px]">
           {/* Background circle */}
           <circle
             cx={centerX}
@@ -589,21 +566,21 @@ const PieChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
           })}
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center bg-white dark:bg-gray-800 rounded-full p-4 shadow-lg">
-            <div className="text-2xl font-bold text-gray-800 dark:text-white">{total}</div>
+          <div className="text-center bg-white dark:bg-gray-800 rounded-full p-3 sm:p-4 shadow-lg">
+            <div className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-white">{total}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
           </div>
         </div>
       </div>
-      <div className="ml-8 space-y-3">
+      <div className="w-full lg:w-auto lg:ml-8 space-y-2 sm:space-y-3">
         {data.map((item, index) => (
-          <div key={item.label} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+          <div key={item.label} className="flex items-center space-x-2 sm:space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <div 
-              className="w-4 h-4 rounded-full shadow-sm border-2 border-white dark:border-gray-800" 
+              className="w-3 h-3 sm:w-4 sm:h-4 rounded-full shadow-sm border-2 border-white dark:border-gray-800 flex-shrink-0" 
               style={{ backgroundColor: item.color || `hsl(${index * 60}, 70%, 50%)` }}
             />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-800 dark:text-white truncate">{item.label}</div>
+              <div className="text-xs sm:text-sm font-medium text-gray-800 dark:text-white truncate">{item.label}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {item.value} ({((item.value / total) * 100).toFixed(1)}%)
               </div>
@@ -628,18 +605,18 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
   const maxValue = Math.max(...data.map(d => d.value), 1);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {data.map((d, i) => {
         const percentage = (d.value / maxValue) * 100;
         return (
-          <div key={d.label} className="space-y-2">
+          <div key={d.label} className="space-y-1 sm:space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{d.label}</span>
-              <span className="text-sm font-bold text-gray-900 dark:text-white">{d.value}</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{d.label}</span>
+              <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white ml-2">{d.value}</span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 sm:h-3 overflow-hidden">
               <div
-                className="h-3 rounded-full transition-all duration-1000 ease-out shadow-sm"
+                className="h-2 sm:h-3 rounded-full transition-all duration-1000 ease-out shadow-sm"
                 style={{ 
                   width: `${percentage}%`,
                   backgroundColor: d.color || `hsl(${i * 60}, 70%, 50%)`
@@ -660,9 +637,9 @@ const LineChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
   }
 
   const maxValue = Math.max(...data.map(d => d.value), 1);
-  const chartHeight = 200;
-  const chartWidth = 300;
-  const padding = 40;
+  const chartHeight = 160;
+  const chartWidth = 280;
+  const padding = 30;
 
   const points = data.map((d, i) => {
     const x = padding + (i / (data.length - 1)) * (chartWidth - 2 * padding);
@@ -671,8 +648,8 @@ const LineChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
   }).join(' ');
 
   return (
-    <div className="flex items-center justify-center">
-      <svg width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
+    <div className="flex items-center justify-center overflow-x-auto">
+      <svg width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="sm:w-[300px] sm:h-[200px]">
         {/* Grid lines */}
         {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
           <line
@@ -691,9 +668,9 @@ const LineChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
         <polyline
           fill="none"
           stroke="#3B82F6"
-          strokeWidth="3"
+          strokeWidth="2"
           points={points}
-          className="transition-all duration-300"
+          className="transition-all duration-300 sm:stroke-[3]"
         />
         
         {/* Data points */}
@@ -706,13 +683,13 @@ const LineChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
               <circle
                 cx={x}
                 cy={y}
-                r="4"
+                r="3"
                 fill="#3B82F6"
-                className="transition-all duration-300 hover:r-6"
+                className="transition-all duration-300 hover:r-5 sm:r-[4px] sm:hover:r-6"
                 />
                 <text
                 x={x}
-                y={y - 10}
+                y={y - 8}
                 textAnchor="middle"
                 className="text-xs font-medium fill-current text-gray-800 dark:text-white"
                 >
@@ -720,7 +697,7 @@ const LineChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
                 </text>
                 <text
                 x={x}
-                y={chartHeight - 10}
+                y={chartHeight - 8}
                 textAnchor="middle"
                 className="text-xs fill-current text-gray-500 dark:text-gray-400"
                 >

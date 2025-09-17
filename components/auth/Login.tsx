@@ -49,13 +49,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden">
-      {/* Enhanced Animated Background Elements */}
+      {/* Optimized Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-60 h-60 sm:w-80 sm:h-80 bg-primary-200 dark:bg-primary-800 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-20 animate-float-slow"></div>
         <div className="absolute -bottom-40 -left-40 w-60 h-60 sm:w-80 sm:h-80 bg-blue-200 dark:bg-blue-800 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-20 animate-float-reverse" style={{animationDelay: '2s'}}></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-60 h-60 sm:w-80 sm:h-80 bg-purple-200 dark:bg-purple-800 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-20 animate-float-slow" style={{animationDelay: '4s'}}></div>
-        <div className="absolute top-1/4 right-1/4 w-40 h-40 sm:w-60 sm:h-60 bg-green-200 dark:bg-green-800 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-15 animate-float" style={{animationDelay: '1s'}}></div>
-        <div className="absolute bottom-1/4 right-1/3 w-30 h-30 sm:w-40 sm:h-40 bg-yellow-200 dark:bg-yellow-800 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-15 animate-float-reverse" style={{animationDelay: '3s'}}></div>
       </div>
       
       <div className="container mx-auto px-4 py-4 sm:py-8 relative z-10">
@@ -130,20 +128,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
               ].map((service, index) => (
                 <div 
                   key={index}
-                  className={`bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-500 cursor-pointer group relative overflow-hidden ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                  className={`bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer group relative overflow-hidden ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                   style={{ 
                     transitionDelay: `${parseFloat(service.delay) + 0.5}s`,
                     animationDelay: service.delay
                   }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 ${service.bgColor} rounded-lg flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 relative z-10`}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 ${service.bgColor} rounded-lg flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-105 transition-all duration-300 relative z-10`}>
                     {service.icon}
                   </div>
-                  <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-500 relative z-10">
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-300 relative z-10">
                     {service.title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-xs group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-500 relative z-10">
+                  <p className="text-gray-600 dark:text-gray-300 text-xs group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300 relative z-10">
                     {service.description}
                   </p>
                 </div>
@@ -151,19 +149,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
             </div>
 
             {/* Stats */}
-            <div className={`bg-red-800 rounded-lg p-4 sm:p-6 text-white hover:shadow-xl hover:shadow-red-500/25 transition-all duration-500 relative overflow-hidden ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{transitionDelay: '1s'}}>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500"></div>
+            <div className={`bg-red-800 rounded-lg p-4 sm:p-6 text-white hover:shadow-xl hover:shadow-red-500/25 transition-all duration-300 relative overflow-hidden ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{transitionDelay: '1s'}}>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
               <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center relative z-10">
                 {[
-                  { number: "500+", label: "Happy Customers" },
-                  { number: "15+", label: "Years Experience" },
+                  { number: "1 Lakh+", label: "Happy Customers" },
+                  { number: "25+", label: "Years Experience" },
                   { number: "100%", label: "Satisfaction" }
                 ].map((stat, index) => (
                   <div key={index} className="group">
-                    <div className="text-lg sm:text-2xl font-bold mb-1 group-hover:scale-110 group-hover:text-yellow-200 transition-all duration-500">
+                    <div className="text-lg sm:text-2xl font-bold mb-1 group-hover:scale-105 group-hover:text-yellow-200 transition-all duration-300">
                       {stat.number}
                     </div>
-                    <div className="text-primary-100 text-xs group-hover:text-white group-hover:font-medium transition-all duration-500">
+                    <div className="text-primary-100 text-xs group-hover:text-white group-hover:font-medium transition-all duration-300">
                       {stat.label}
                     </div>
                   </div>
@@ -175,8 +173,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
           {/* Right Side - Login Form */}
           <div className="flex justify-center lg:justify-end order-1 lg:order-2">
             <div className="w-full max-w-md">
-              <div className={`bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 hover:shadow-3xl hover:shadow-primary-500/10 transition-all duration-500 relative overflow-hidden ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`} style={{transitionDelay: '0.3s'}}>
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 via-transparent to-blue-500/5 opacity-0 hover:opacity-100 transition-opacity duration-500"></div>
+              <div className={`bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 hover:shadow-3xl hover:shadow-primary-500/10 transition-all duration-300 relative overflow-hidden ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`} style={{transitionDelay: '0.3s'}}>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 via-transparent to-blue-500/5 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="text-center mb-4 sm:mb-6 relative z-10">
                   <h2 className="text-xl sm:text-2xl font-bold text-primary-600 dark:text-primary-400 mb-2 bg-gradient-to-r from-primary-600 via-blue-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
                     {isSignUp ? 'Create Account' : 'Welcome Back'}
@@ -203,7 +201,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                         required
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 hover:shadow-md focus:shadow-lg hover:border-primary-300 focus:scale-105 text-sm sm:text-base"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:shadow-md focus:shadow-lg hover:border-primary-300 text-sm sm:text-base"
                       />
                     </div>
                   )}
@@ -219,7 +217,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 hover:shadow-md focus:shadow-lg hover:border-primary-300 focus:scale-105"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:shadow-md focus:shadow-lg hover:border-primary-300"
                     />
                   </div>
 
@@ -235,7 +233,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 hover:shadow-md focus:shadow-lg hover:border-primary-300 focus:scale-105"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:shadow-md focus:shadow-lg hover:border-primary-300"
                     />
                   </div>
                   
@@ -248,7 +246,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                         id="role"
                         value={role}
                         onChange={e => setRole(e.target.value as Role)}
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 hover:shadow-md focus:shadow-lg hover:border-primary-300 focus:scale-105 text-sm sm:text-base"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:shadow-md focus:shadow-lg hover:border-primary-300 text-sm sm:text-base"
                       >
                         <option value={Role.Customer}>Customer</option>
                       </select>
@@ -262,7 +260,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full flex justify-center items-center py-2.5 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-300 disabled:cursor-not-allowed transition-all duration-500 hover:shadow-xl hover:shadow-primary-500/25 hover:scale-105 disabled:hover:scale-100 relative overflow-hidden group"
+                      className="w-full flex justify-center items-center py-2.5 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-300 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/25 hover:scale-105 disabled:hover:scale-100 relative overflow-hidden group"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                       {loading ? (
@@ -305,7 +303,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                 </div>
                 
                 {!isSignUp && (
-                  <div className="mt-4 sm:mt-6 p-2 sm:p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:shadow-md transition-all duration-300 relative z-20">
+                  <div className="mt-4 sm:mt-6 p-2 sm:p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:shadow-md transition-all duration-200 relative z-20">
                     <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-2 flex items-center">
                       <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -321,7 +319,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                         { role: "EPR (Mohit)", email: "mohit@test.com", password: "mohit123" },
                         { role: "EPR (Rohit)", email: "rohit@test.com", password: "rohit123" }
                       ].map((account, index) => (
-                        <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-center hover:bg-blue-100 dark:hover:bg-blue-800/30 px-1.5 py-1 rounded transition-colors duration-200">
+                        <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-center hover:bg-blue-100 dark:hover:bg-blue-800/30 px-1.5 py-1 rounded transition-colors duration-150">
                           <span className="font-medium text-xs mb-1 sm:mb-0">{account.role}:</span>
                           <span className="text-left sm:text-right text-xs">
                             <span className="text-blue-600 dark:text-blue-400">{account.email}</span>

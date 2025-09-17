@@ -159,7 +159,7 @@ const AppContent: React.FC = () => {
       <main className="p-4 sm:p-6 md:p-8 flex-grow">
         {renderContent()}
       </main>
-      {user && <ChatWidget user={user} />}
+      {user && user.role === Role.Customer && <ChatWidget user={user} />}
       <Footer />
     </div>
   );

@@ -134,7 +134,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-            Test Payment for Quote Approval
+            Payment for Quote Approval
           </h2>
           <button
             onClick={onClose}
@@ -230,7 +230,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                   <span className="ml-2">Processing...</span>
                 </>
               ) : (
-                `Test Pay ${quote.currency === 'USD' ? '$' : '₹'}${quote.total_cost}`
+                `Pay ${quote.currency === 'USD' ? '$' : '₹'}${quote.total_cost}`
               )}
             </button>
           </div>

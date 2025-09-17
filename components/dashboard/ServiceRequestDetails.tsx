@@ -807,7 +807,7 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
                                                             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                                             </svg>
-                                                            Test Pay {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}
+                                                            Pay {request.quote.currency === 'USD' ? '$' : '₹'}{request.quote.total_cost}
                                                         </>
                                                     )}
                                                 </button>
@@ -1204,13 +1204,20 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-6 md:p-8 relative">
-      <button onClick={onBack} className="absolute top-4 left-4 text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-200">
-          &larr; Back to list
-      </button>
-
-      <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-800 dark:text-white mb-2">Service Request Details</h2>
-      <p className="text-center font-mono text-sm text-gray-500 dark:text-gray-400 mb-4">ID: {request.id.slice(-12)}</p>
+    <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-4 sm:p-6 md:p-8">
+      {/* Header Section with Back Button */}
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <button onClick={onBack} className="flex items-center text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-200 text-sm sm:text-base">
+          <span className="mr-1">&larr;</span>
+          <span className="hidden sm:inline">Back to list</span>
+          <span className="sm:hidden">Back</span>
+        </button>
+        <div className="flex-1 text-center">
+          <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Service Request Details</h2>
+          <p className="font-mono text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">ID: {request.id.slice(-12)}</p>
+        </div>
+        <div className="w-16 sm:w-20"></div> {/* Spacer for centering */}
+      </div>
 
       {/* Assignment Information */}
       {request.assigned_service_team && (
@@ -1228,23 +1235,25 @@ const ServiceRequestDetails: React.FC<ServiceRequestDetailsProps> = ({ request: 
 
       {/* Status Timeline */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200">Repair Progress</h3>
-        <div className="flex items-center">
-            {timelineSteps.map((status, index) => {
-                const isCompleted = index <= currentStepInfo;
-                const isCurrent = index === currentStepInfo;
-                return (
-                    <React.Fragment key={status}>
-                        <div className="flex flex-col items-center">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'}`}>
-                                {isCompleted && !isCurrent ? '✓' : index + 1}
-                            </div>
-                            <p className={`mt-2 text-xs text-center w-20 ${isCurrent ? 'font-bold text-primary-600 dark:text-primary-400' : 'text-gray-500'}`}>{status}</p>
-                        </div>
-                        {index < timelineSteps.length - 1 && <div className={`flex-1 h-1 ${isCompleted ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>}
-                    </React.Fragment>
-                )
-            })}
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-700 dark:text-gray-200">Repair Progress</h3>
+        <div className="overflow-x-auto">
+          <div className="flex items-center min-w-max sm:min-w-0">
+              {timelineSteps.map((status, index) => {
+                  const isCompleted = index <= currentStepInfo;
+                  const isCurrent = index === currentStepInfo;
+                  return (
+                      <React.Fragment key={status}>
+                          <div className="flex flex-col items-center min-w-0 flex-shrink-0">
+                              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${isCompleted ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-500'}`}>
+                                  {isCompleted && !isCurrent ? '✓' : index + 1}
+                              </div>
+                              <p className={`mt-1 sm:mt-2 text-xs text-center w-16 sm:w-20 px-1 ${isCurrent ? 'font-bold text-primary-600 dark:text-primary-400' : 'text-gray-500'}`}>{status}</p>
+                          </div>
+                          {index < timelineSteps.length - 1 && <div className={`flex-1 h-1 min-w-4 sm:min-w-8 ${isCompleted ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>}
+                      </React.Fragment>
+                  )
+              })}
+          </div>
         </div>
       </div>
       
