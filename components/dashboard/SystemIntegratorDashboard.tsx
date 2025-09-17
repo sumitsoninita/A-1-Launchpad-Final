@@ -1,28 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppUser, BulkServiceRequest } from '../../types';
+import { AppUser, Role, BulkServiceRequest } from '../../types';
 import { api } from '../../services/api';
 import Spinner from '../shared/Spinner';
 import BulkServiceRequestForm from '../forms/BulkServiceRequestForm';
 import BulkServiceRequestDetails from './BulkServiceRequestDetails';
 
-interface ChannelPartnerDashboardProps {
+interface SystemIntegratorDashboardProps {
   user: AppUser;
 }
 
-const ChannelPartnerDashboard: React.FC<ChannelPartnerDashboardProps> = ({ user }) => {
+const SystemIntegratorDashboard: React.FC<SystemIntegratorDashboardProps> = ({ user }) => {
   const [bulkRequests, setBulkRequests] = useState<BulkServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<BulkServiceRequest | null>(null);
 
-  const fetchRequests = useCallback(async () => {
+  const fetchBulkRequests = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch only bulk requests for Channel Partners
-      const bulkRequestsData = await api.getBulkServiceRequests(user.email, user.role);
-      setBulkRequests(bulkRequestsData);
+      const requests = await api.getBulkServiceRequests(user.email, user.role);
+      setBulkRequests(requests);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -31,27 +30,17 @@ const ChannelPartnerDashboard: React.FC<ChannelPartnerDashboardProps> = ({ user 
   }, [user.email, user.role]);
 
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+    fetchBulkRequests();
+  }, [fetchBulkRequests]);
 
-  const handleCreateBulkRequest = async (requestData: any) => {
+  const handleCreateRequest = async (requestData: any) => {
     try {
-      console.log('Channel Partner: Starting bulk request creation...');
-      console.log('Request data:', requestData);
-      console.log('User email:', user.email);
-      console.log('User role:', user.role);
-      
       setLoading(true);
-      setError(null);
-      
-      const result = await api.createBulkServiceRequest(requestData, user.email, 'channel_partner');
-      console.log('Bulk request created successfully:', result);
-      
+      await api.createBulkServiceRequest(requestData, user.email, 'system_integrator');
       setShowCreateForm(false);
-      await fetchRequests();
+      await fetchBulkRequests();
     } catch (err: any) {
-      console.error('Error creating bulk request:', err);
-      setError(err.message || 'Failed to create bulk request');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -83,7 +72,7 @@ const ChannelPartnerDashboard: React.FC<ChannelPartnerDashboardProps> = ({ user 
     return (
       <BulkServiceRequestForm
         userRole={user.role}
-        onSubmit={handleCreateBulkRequest}
+        onSubmit={handleCreateRequest}
         onCancel={() => setShowCreateForm(false)}
         loading={loading}
       />
@@ -97,7 +86,7 @@ const ChannelPartnerDashboard: React.FC<ChannelPartnerDashboardProps> = ({ user 
         onBack={() => setSelectedRequest(null)}
         user={user}
         onUpdate={() => {
-          fetchRequests(); // Refresh the data
+          fetchBulkRequests(); // Refresh the data
         }}
       />
     );
@@ -221,4 +210,4 @@ const ChannelPartnerDashboard: React.FC<ChannelPartnerDashboardProps> = ({ user 
   );
 };
 
-export default ChannelPartnerDashboard;
+export default SystemIntegratorDashboard;

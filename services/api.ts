@@ -1,4 +1,4 @@
-import { AppUser, Role, ServiceRequest, Status, Complaint, EnrichedComplaint, Quote, Feedback, EPRStatus, EPRTimelineEntry } from '../types';
+import { AppUser, Role, ServiceRequest, Status, Complaint, EnrichedComplaint, Quote, Feedback, EPRStatus, EPRTimelineEntry, BulkServiceRequest, BulkEquipmentItem } from '../types';
 import { supabase, supabaseAdmin } from './supabase';
 import { createPaymentOrder, verifyPaymentSignature, getPaymentDetails, refundPayment } from './razorpay';
 
@@ -40,6 +40,26 @@ const saveToStorage = <T>(key: string, value: T) => {
     }
 };
 
+// Helper function to convert SQL EPR status to TypeScript enum
+const convertSQLStatusToEPR = (sqlStatus: string): EPRStatus => {
+  switch (sqlStatus) {
+    case 'cost_estimation_preparation':
+      return EPRStatus.CostEstimationPreparation;
+    case 'cost_estimation_completed':
+      return EPRStatus.AwaitingApproval;
+    case 'repair_approved':
+      return EPRStatus.Approved;
+    case 'cancelled':
+      return EPRStatus.Declined;
+    case 'repair_in_progress':
+      return EPRStatus.RepairInProgress;
+    case 'completed':
+      return EPRStatus.RepairCompleted;
+    default:
+      return EPRStatus.CostEstimationPreparation;
+  }
+};
+
 
 // --- API Methods ---
 export const api = {
@@ -67,6 +87,7 @@ export const api = {
                             'mukesh@test.com': 'mukesh123',
                             'suresh@test.com': 'suresh123',
                             'partner@test.com': 'partner123',
+                            'system.integrator@test.com': 'integrator123',
                             'mohit@test.com': 'mohit123',
                             'rohit@test.com': 'rohit123'
                         };
@@ -1876,5 +1897,532 @@ export const api = {
                 }
             )
             .subscribe();
+    },
+
+    // --- Bulk Service Request Methods ---
+    async createBulkServiceRequest(requestData: {
+        requester_name: string;
+        company_name?: string;
+        contact_phone?: string;
+        contact_email?: string;
+        priority: 'low' | 'medium' | 'high' | 'urgent';
+        equipment_items: Omit<BulkEquipmentItem, 'id' | 'bulk_request_id' | 'created_at' | 'updated_at'>[];
+    }, requesterEmail: string, requesterRole: 'channel_partner' | 'system_integrator'): Promise<BulkServiceRequest> {
+        try {
+            console.log('Creating bulk service request:', requestData);
+            
+            // Create the bulk service request using the SQL function
+            const { data: bulkRequestId, error: bulkError } = await supabase.rpc('create_bulk_service_request', {
+                p_requester_email: requesterEmail,
+                p_requester_role: requesterRole,
+                p_requester_name: requestData.requester_name,
+                p_company_name: requestData.company_name || null,
+                p_contact_phone: requestData.contact_phone || null,
+                p_contact_email: requestData.contact_email || null,
+                p_priority: requestData.priority
+            });
+
+            if (bulkError) throw bulkError;
+
+            // Add each equipment item
+            for (const item of requestData.equipment_items) {
+                const { error: itemError } = await supabase.rpc('add_bulk_equipment_item', {
+                    p_bulk_request_id: bulkRequestId,
+                    p_equipment_type: item.equipment_type,
+                    p_issue_description: item.issue_description,
+                    p_equipment_model: item.equipment_model || null,
+                    p_serial_number: item.serial_number || null,
+                    p_quantity: item.quantity,
+                    p_unit_price: item.unit_price || null,
+                    p_issue_category: item.issue_category,
+                    p_severity: item.severity
+                });
+
+                if (itemError) throw itemError;
+            }
+
+            // Fetch the complete bulk request with equipment items
+            const { data: bulkRequest, error: fetchError } = await supabase
+                .from('bulk_service_requests')
+                .select(`
+                    *,
+                    bulk_equipment_items (*)
+                `)
+                .eq('id', bulkRequestId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            return {
+                ...bulkRequest,
+                equipment_items: bulkRequest.bulk_equipment_items || []
+            };
+        } catch (error) {
+            console.error('Error creating bulk service request:', error);
+            throw new Error('Failed to create bulk service request');
+        }
+    },
+
+    async getBulkServiceRequests(userEmail: string, userRole: Role): Promise<BulkServiceRequest[]> {
+        try {
+            let query = supabase
+                .from('bulk_service_requests')
+                .select(`
+                    *,
+                    bulk_equipment_items (*)
+                `)
+                .order('created_at', { ascending: false });
+
+            // Filter based on user role
+            if (userRole === Role.Admin) {
+                // Admin can see all requests
+                console.log('API: Admin user - no filtering applied for bulk requests');
+            } else if (userRole === Role.Service || userRole === Role.EPR) {
+                // Service and EPR teams can see requests assigned to them
+                query = query.or(`assigned_service_team.eq.${userEmail},assigned_epr_team.eq.${userEmail}`);
+                console.log(`API: Filtering bulk requests for ${userRole} team member: ${userEmail}`);
+            } else {
+                // Channel partners and system integrators can only see their own requests
+                query = query.eq('requester_email', userEmail);
+                console.log(`API: Filtering bulk requests for requester: ${userEmail}`);
+            }
+
+            const { data: bulkRequests, error } = await query;
+
+            if (error) throw error;
+
+            return bulkRequests.map(request => ({
+                ...request,
+                equipment_items: (request.bulk_equipment_items || []).map(item => ({
+                    ...item,
+                    epr_status: item.epr_status ? convertSQLStatusToEPR(item.epr_status) : undefined
+                }))
+            }));
+        } catch (error) {
+            console.error('Error fetching bulk service requests:', error);
+            throw new Error('Failed to fetch bulk service requests');
+        }
+    },
+
+    async getBulkServiceRequestById(requestId: string, userEmail: string, userRole: Role): Promise<BulkServiceRequest> {
+        try {
+            const { data: bulkRequest, error } = await supabase
+                .from('bulk_service_requests')
+                .select(`
+                    *,
+                    bulk_equipment_items (*)
+                `)
+                .eq('id', requestId)
+                .single();
+
+            if (error) throw error;
+
+            // Check if user has access to this request
+            if (userRole !== Role.Admin && 
+                userRole !== Role.Service && 
+                userRole !== Role.EPR && 
+                bulkRequest.requester_email !== userEmail) {
+                throw new Error('Access denied');
+            }
+
+            return {
+                ...bulkRequest,
+                equipment_items: (bulkRequest.bulk_equipment_items || []).map(item => ({
+                    ...item,
+                    epr_status: item.epr_status ? convertSQLStatusToEPR(item.epr_status) : undefined
+                }))
+            };
+        } catch (error) {
+            console.error('Error fetching bulk service request:', error);
+            throw new Error('Failed to fetch bulk service request');
+        }
+    },
+
+    async updateBulkServiceRequestStatus(
+        requestId: string, 
+        status: 'pending' | 'under_review' | 'approved' | 'in_progress' | 'completed' | 'cancelled',
+        userEmail: string
+    ): Promise<BulkServiceRequest> {
+        try {
+            // First get the current request to check current assignment
+            const { data: currentRequest, error: fetchError } = await supabase
+                .from('bulk_service_requests')
+                .select('assigned_to, assigned_service_team, assigned_epr_team')
+                .eq('id', requestId)
+                .single();
+            
+            if (fetchError) throw fetchError;
+            
+            // If status is being updated to 'under_review' (equivalent to 'Diagnosis'), assign an EPR team member
+            let updateData: any = {
+                status,
+                updated_at: new Date().toISOString()
+            };
+            
+            if (status === 'under_review') {
+                // Check if an EPR member is already assigned, if not, assign one
+                const currentAssignedTo = currentRequest.assigned_to;
+                if (!currentRequest.assigned_epr_team || (!currentRequest.assigned_epr_team.includes('mohit') && !currentRequest.assigned_epr_team.includes('rohit'))) {
+                    const assignedEPRMember = await this.getNextEPRTeamMember();
+                    updateData.assigned_epr_team = assignedEPRMember;
+                    // Update the main assigned_to field for backward compatibility
+                    if (currentAssignedTo && (currentAssignedTo.includes('mukesh') || currentAssignedTo.includes('suresh'))) {
+                        updateData.assigned_to = `${currentAssignedTo}, ${assignedEPRMember}`;
+                        console.log(`Bulk EPR request ${requestId} assigned to: ${currentAssignedTo} (service) + ${assignedEPRMember} (EPR) when status changed to under_review`);
+                    } else {
+                        updateData.assigned_to = assignedEPRMember;
+                        console.log(`Bulk EPR request ${requestId} assigned to: ${assignedEPRMember} when status changed to under_review`);
+                    }
+                }
+            }
+
+            const { data: updatedRequest, error } = await supabase
+                .from('bulk_service_requests')
+                .update(updateData)
+                .eq('id', requestId)
+                .select(`
+                    *,
+                    bulk_equipment_items (*)
+                `)
+                .single();
+
+            if (error) throw error;
+
+            return {
+                ...updatedRequest,
+                equipment_items: updatedRequest.bulk_equipment_items || []
+            };
+        } catch (error) {
+            console.error('Error updating bulk service request status:', error);
+            throw new Error('Failed to update bulk service request status');
+        }
+    },
+
+  async updateBulkEquipmentItemEPRStatus(
+    itemId: string,
+    eprStatus: EPRStatus,
+    costEstimation?: number,
+    costEstimationCurrency?: 'INR' | 'USD',
+    details?: string,
+    userEmail: string
+  ): Promise<BulkEquipmentItem> {
+    try {
+      // Convert EPR status from TypeScript enum to SQL format
+      const convertEPRStatusToSQL = (status: EPRStatus): string => {
+        switch (status) {
+          case EPRStatus.CostEstimationPreparation:
+            return 'cost_estimation_preparation';
+          case EPRStatus.AwaitingApproval:
+            return 'cost_estimation_completed';
+          case EPRStatus.Approved:
+            return 'repair_approved';
+          case EPRStatus.Declined:
+            return 'cancelled';
+          case EPRStatus.RepairInProgress:
+            return 'repair_in_progress';
+          case EPRStatus.RepairCompleted:
+            return 'completed';
+          case EPRStatus.ReturnToCustomer:
+            return 'cancelled';
+          default:
+            return 'pending';
+        }
+      };
+
+
+      const sqlEprStatus = convertEPRStatusToSQL(eprStatus);
+
+      // Create timeline entry
+      const timelineEntry = {
+        timestamp: new Date().toISOString(),
+        user: userEmail,
+        action: `EPR Status Updated to: ${eprStatus}`,
+        epr_status: eprStatus,
+        details: details || '',
+        cost_estimation: costEstimation,
+        cost_estimation_currency: costEstimationCurrency
+      };
+
+      // Update using the SQL function
+      const { error: updateError } = await supabase.rpc('update_bulk_equipment_epr_status', {
+        p_item_id: itemId,
+        p_epr_status: sqlEprStatus,
+        p_cost_estimation: costEstimation || null,
+        p_cost_estimation_currency: costEstimationCurrency || null,
+        p_timeline_entry: timelineEntry
+      });
+
+      if (updateError) throw updateError;
+
+      // Create notification for service team about EPR cost estimation
+      if (costEstimation && costEstimation > 0) {
+        try {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_email: userEmail,
+              title: 'EPR Cost Estimation Completed',
+              message: `EPR team has provided cost estimation for equipment item. Amount: ${costEstimationCurrency === 'USD' ? '$' : '₹'}${costEstimation}`,
+              type: 'epr_estimation',
+              is_read: false,
+              created_at: new Date().toISOString()
+            });
+        } catch (notificationError) {
+          console.error('Error creating notification:', notificationError);
+          // Don't fail the main operation if notification fails
+        }
+      }
+
+      // Fetch the updated item
+      const { data: updatedItem, error: fetchError } = await supabase
+        .from('bulk_equipment_items')
+        .select('*')
+        .eq('id', itemId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Convert SQL status back to TypeScript enum
+      if (updatedItem.epr_status) {
+        updatedItem.epr_status = convertSQLStatusToEPR(updatedItem.epr_status);
+      }
+
+      return updatedItem;
+    } catch (error) {
+      console.error('Error updating bulk equipment item EPR status:', error);
+      throw new Error('Failed to update bulk equipment item EPR status');
     }
+  },
+
+  async updateBulkServiceRequestEPRStatus(
+    requestId: string,
+    eprStatus: EPRStatus,
+    costEstimation?: number,
+    costEstimationCurrency?: 'INR' | 'USD',
+    details?: string,
+    userEmail: string
+  ): Promise<BulkServiceRequest> {
+    try {
+      // Convert EPR status from TypeScript enum to SQL format
+      const convertEPRStatusToSQL = (status: EPRStatus): string => {
+        switch (status) {
+          case EPRStatus.CostEstimationPreparation:
+            return 'cost_estimation_preparation';
+          case EPRStatus.AwaitingApproval:
+            return 'cost_estimation_completed';
+          case EPRStatus.Approved:
+            return 'repair_approved';
+          case EPRStatus.Declined:
+            return 'cancelled';
+          case EPRStatus.RepairInProgress:
+            return 'repair_in_progress';
+          case EPRStatus.RepairCompleted:
+            return 'completed';
+          case EPRStatus.ReturnToCustomer:
+            return 'cancelled';
+          default:
+            return 'pending';
+        }
+      };
+
+      const sqlEprStatus = convertEPRStatusToSQL(eprStatus);
+
+      // Create timeline entry
+      const timelineEntry = {
+        timestamp: new Date().toISOString(),
+        user: userEmail,
+        action: `EPR Status Updated to: ${eprStatus}`,
+        epr_status: eprStatus,
+        details: details || '',
+        cost_estimation: costEstimation,
+        cost_estimation_currency: costEstimationCurrency
+      };
+
+      // Update the bulk service request with EPR status and cost estimation
+      const updateData: any = {
+        epr_status: sqlEprStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only add cost estimation fields if they are provided
+      if (costEstimation !== undefined && costEstimation !== null) {
+        updateData.epr_cost_estimation = costEstimation;
+      }
+      if (costEstimationCurrency) {
+        updateData.epr_cost_estimation_currency = costEstimationCurrency;
+      }
+
+      const { error: updateError } = await supabase
+        .from('bulk_service_requests')
+        .update(updateData)
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      // Add timeline entry to the bulk request
+      // First, get the current timeline
+      const { data: currentRequest, error: fetchCurrentError } = await supabase
+        .from('bulk_service_requests')
+        .select('epr_timeline')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchCurrentError) {
+        console.error('Error fetching current timeline:', fetchCurrentError);
+      } else {
+        // Append the new timeline entry
+        const currentTimeline = currentRequest.epr_timeline || [];
+        const updatedTimeline = [...currentTimeline, timelineEntry];
+
+        const { error: timelineError } = await supabase
+          .from('bulk_service_requests')
+          .update({
+            epr_timeline: updatedTimeline
+          })
+          .eq('id', requestId);
+
+        if (timelineError) {
+          console.error('Error updating timeline:', timelineError);
+          // Don't fail the main operation if timeline update fails
+        }
+      }
+
+      // Create notification for service team about EPR cost estimation
+      if (costEstimation && costEstimation > 0) {
+        try {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_email: userEmail,
+              title: 'EPR Cost Estimation Completed',
+              message: `EPR team has provided combined cost estimation for bulk request. Amount: ${costEstimationCurrency === 'USD' ? '$' : '₹'}${costEstimation}`,
+              type: 'epr_estimation',
+              is_read: false,
+              created_at: new Date().toISOString()
+            });
+        } catch (notificationError) {
+          console.error('Error creating notification:', notificationError);
+          // Don't fail the main operation if notification fails
+        }
+      }
+
+      // Fetch the updated bulk request with all related data
+      const { data: updatedRequest, error: fetchError } = await supabase
+        .from('bulk_service_requests')
+        .select(`
+          *,
+          equipment_items:bulk_equipment_items(*)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Convert SQL status back to TypeScript enum
+      if (updatedRequest.epr_status) {
+        updatedRequest.epr_status = convertSQLStatusToEPR(updatedRequest.epr_status);
+      }
+
+      // Convert equipment items EPR statuses
+      if (updatedRequest.equipment_items) {
+        updatedRequest.equipment_items = updatedRequest.equipment_items.map((item: any) => {
+          if (item.epr_status) {
+            item.epr_status = convertSQLStatusToEPR(item.epr_status);
+          }
+          return item;
+        });
+      }
+
+      return updatedRequest;
+    } catch (error) {
+      console.error('Error updating bulk service request EPR status:', error);
+      throw new Error('Failed to update bulk service request EPR status');
+    }
+  },
+
+  async addQuoteToBulkRequest(
+    requestId: string,
+    quoteData: Omit<Quote, 'id' | 'created_at' | 'is_approved'>,
+    userEmail: string
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('bulk_service_requests')
+        .update({
+          quote: quoteData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Create timeline entry for quote generation
+      const timelineEntry = {
+        timestamp: new Date().toISOString(),
+        user: userEmail,
+        action: 'Quote Generated',
+        details: `Quote generated with total cost: ${quoteData.currency === 'USD' ? '$' : '₹'}${quoteData.total_cost}`,
+        quote_data: quoteData
+      };
+
+      // Add timeline entry to the bulk request
+      // First, get the current timeline
+      const { data: currentRequest, error: fetchCurrentError } = await supabase
+        .from('bulk_service_requests')
+        .select('timeline')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchCurrentError) {
+        console.error('Error fetching current timeline:', fetchCurrentError);
+      } else {
+        // Append the new timeline entry
+        const currentTimeline = currentRequest.timeline || [];
+        const updatedTimeline = [...currentTimeline, timelineEntry];
+
+        const { error: timelineError } = await supabase
+          .from('bulk_service_requests')
+          .update({
+            timeline: updatedTimeline,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', requestId);
+
+        if (timelineError) {
+          console.error('Error updating timeline:', timelineError);
+          // Don't fail the main operation if timeline update fails
+        }
+      }
+
+      // Create notification for channel partner/system integrator about quote generation
+      try {
+        // Get the bulk request to find the requester
+        const { data: bulkRequest, error: fetchError } = await supabase
+          .from('bulk_service_requests')
+          .select('requester_email, requester_name')
+          .eq('id', requestId)
+          .single();
+
+        if (!fetchError && bulkRequest) {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_email: bulkRequest.requester_email,
+              title: 'Quote Generated for Bulk Request',
+              message: `A quote has been generated for your bulk service request. Total amount: ${quoteData.currency === 'USD' ? '$' : '₹'}${quoteData.total_cost}. Please review and approve.`,
+              type: 'quote_generated',
+              is_read: false,
+              created_at: new Date().toISOString()
+            });
+        }
+      } catch (notificationError) {
+        console.error('Error creating quote notification:', notificationError);
+        // Don't fail the main operation if notification fails
+      }
+
+    } catch (error) {
+      console.error('Error adding quote to bulk request:', error);
+      throw new Error('Failed to add quote to bulk request');
+    }
+  }
 };

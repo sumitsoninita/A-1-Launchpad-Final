@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AppUser, ServiceRequest, Complaint, EnrichedComplaint, EPRStatus } from '../../types';
+import { AppUser, ServiceRequest, Complaint, EnrichedComplaint, EPRStatus, BulkServiceRequest } from '../../types';
 import { api } from '../../services/api';
 import Spinner from '../shared/Spinner';
 import ServiceRequestList from './ServiceRequestList';
 import ComplaintsList from './ComplaintsList';
 import EPRTimeline from './EPRTimeline';
+import BulkServiceRequestDetails from './BulkServiceRequestDetails';
 
 interface EPRDashboardProps {
   user: AppUser;
@@ -12,8 +13,10 @@ interface EPRDashboardProps {
 
 const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [bulkRequests, setBulkRequests] = useState<BulkServiceRequest[]>([]);
   const [complaints, setComplaints] = useState<EnrichedComplaint[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [selectedBulkRequest, setSelectedBulkRequest] = useState<BulkServiceRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('complaints');
@@ -43,6 +46,24 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
       console.log(`EPR Dashboard (${user.email}): Filtered EPR requests:`, eprRequests.length);
       console.log(`EPR Dashboard (${user.email}): EPR requests:`, eprRequests.map(r => ({ id: r.id.slice(-8), status: r.status, assigned_to: r.assigned_to })));
       setRequests(eprRequests);
+      
+      // Fetch bulk requests assigned to this EPR team member
+      try {
+        const bulkRequestData = await api.getBulkServiceRequests(user.email, user.role);
+        // Filter bulk requests for EPR team (under_review and beyond)
+        const eprBulkRequests = bulkRequestData.filter(req => 
+          req.status === 'under_review' || 
+          req.status === 'approved' || 
+          req.status === 'in_progress' || 
+          req.status === 'completed' ||
+          req.status === 'cancelled'
+        );
+        setBulkRequests(eprBulkRequests);
+        console.log(`EPR Dashboard (${user.email}): Fetched ${eprBulkRequests.length} bulk requests`);
+      } catch (bulkError) {
+        console.error('Error fetching bulk requests for EPR:', bulkError);
+        // Don't fail the entire fetch if bulk requests fail
+      }
       
       // EPR team can see all complaints (like service team)
       const complaintsData = await api.getComplaints();
@@ -194,6 +215,118 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
             <div className="text-red-500 text-center">{error}</div>
           ) : (
             <ServiceRequestList requests={filteredRequests} onSelectRequest={handleRequestSelect} />
+          )}
+        </div>
+      );
+    }
+
+    if (activeTab === 'bulk-requests') {
+      return (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Bulk Service Requests</h2>
+            <button
+              onClick={fetchData}
+              className="px-3 sm:px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors text-sm sm:text-base"
+            >
+              Refresh Data
+            </button>
+          </div>
+          
+          {loading ? (
+            <div className="flex justify-center items-center h-64"><Spinner /></div>
+          ) : error ? (
+            <div className="text-red-500 text-center">{error}</div>
+          ) : bulkRequests.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No bulk requests assigned</h3>
+              <p className="text-gray-500 dark:text-gray-400">You don't have any bulk service requests assigned to you yet.</p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Request ID
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Requester
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Priority
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Equipment Count
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Created
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {bulkRequests.map((request) => (
+                      <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {request.id.substring(0, 8)}...
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {request.requester_name}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            request.status === 'under_review' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                            request.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            request.status === 'in_progress' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                            request.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          }`}>
+                            {request.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            request.priority === 'urgent' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                            request.priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                            request.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          }`}>
+                            {request.priority.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {request.total_equipment_count}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                          <button
+                            onClick={() => setSelectedBulkRequest(request)}
+                            className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       );
@@ -359,6 +492,19 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
     return null;
   };
 
+  if (selectedBulkRequest) {
+    return (
+      <BulkServiceRequestDetails
+        request={selectedBulkRequest}
+        onBack={() => setSelectedBulkRequest(null)}
+        user={user}
+        onUpdate={() => {
+          fetchData(); // Refresh the data
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -393,6 +539,16 @@ const EPRDashboard: React.FC<EPRDashboardProps> = ({ user }) => {
             }`}
           >
             Service Requests
+          </button>
+          <button
+            onClick={() => setActiveTab('bulk-requests')}
+            className={`py-2 sm:py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
+              activeTab === 'bulk-requests'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Bulk Requests <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-blue-100 text-blue-800 rounded-full">{bulkRequests.length}</span>
           </button>
           <button
             onClick={() => setActiveTab('integration')}

@@ -4,6 +4,7 @@ export enum Role {
   Service = 'service',
   Admin = 'admin',
   ChannelPartner = 'channel_partner',
+  SystemIntegrator = 'system_integrator',
   EPR = 'epr',
 }
 
@@ -139,4 +140,53 @@ export interface Feedback {
   customer_name?: string;
   product_type?: ProductType;
   serial_number?: string;
+}
+
+// Bulk Service Request Interfaces
+export interface BulkEquipmentItem {
+  id: string;
+  bulk_request_id: string;
+  equipment_type: string;
+  equipment_model?: string;
+  serial_number?: string;
+  quantity: number;
+  unit_price?: number;
+  total_price?: number;
+  issue_description: string;
+  issue_category: 'hardware' | 'software' | 'installation' | 'maintenance' | 'warranty' | 'other';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  item_status: 'pending' | 'diagnosed' | 'repair_approved' | 'repair_in_progress' | 'quality_check' | 'completed' | 'cancelled';
+  epr_status?: EPRStatus;
+  epr_cost_estimation?: number;
+  epr_cost_estimation_currency?: 'INR' | 'USD';
+  epr_timeline?: EPRTimelineEntry[];
+  quote?: Quote | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BulkServiceRequest {
+  id: string;
+  requester_email: string;
+  requester_role: 'channel_partner' | 'system_integrator';
+  requester_name: string;
+  company_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  total_equipment_count: number;
+  estimated_total_value?: number;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'under_review' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
+  assigned_service_team?: string;
+  assigned_epr_team?: string;
+  assigned_to?: string;
+  equipment_items: BulkEquipmentItem[];
+  // EPR fields for combined cost estimation
+  epr_status?: EPRStatus;
+  epr_cost_estimation?: number;
+  epr_cost_estimation_currency?: 'INR' | 'USD';
+  epr_timeline?: EPRTimelineEntry[];
+  quote?: Quote | null;
+  created_at: string;
+  updated_at: string;
 }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ServiceRequest, Role, Status, ProductType, AppUser, Feedback, EnrichedComplaint, EPRStatus } from '../../types';
+import { ServiceRequest, Role, Status, ProductType, AppUser, Feedback, EnrichedComplaint, EPRStatus, BulkServiceRequest } from '../../types';
 import { api } from '../../services/api';
 import ServiceRequestList from './ServiceRequestList';
 import ServiceRequestDetails from './ServiceRequestDetails';
+import BulkServiceRequestDetails from './BulkServiceRequestDetails';
 import Spinner from '../shared/Spinner';
 import AnalyticsCharts from './AnalyticsCharts';
 import FeedbackList from './FeedbackList';
@@ -19,9 +20,14 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [bulkRequests, setBulkRequests] = useState<BulkServiceRequest[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [complaints, setComplaints] = useState<EnrichedComplaint[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [selectedBulkRequest, setSelectedBulkRequest] = useState<BulkServiceRequest | null>(null);
+  const [showBulkStatusModal, setShowBulkStatusModal] = useState(false);
+  const [newBulkStatus, setNewBulkStatus] = useState<string>('');
+  const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -38,6 +44,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       // Use filtered requests for team members, all requests for admin
       const requestData = await api.getServiceRequestsForTeamMember(user.email, user.role);
       setRequests(requestData);
+      
+      // Fetch bulk requests for service and EPR team members
+      if (user.role === Role.Service || user.role === Role.EPR || user.role === Role.Admin) {
+        try {
+          const bulkRequestData = await api.getBulkServiceRequests(user.email, user.role);
+          setBulkRequests(bulkRequestData);
+          console.log(`AdminDashboard: Fetched ${bulkRequestData.length} bulk requests for ${user.email} (${user.role})`);
+        } catch (bulkError) {
+          console.error('Error fetching bulk requests:', bulkError);
+          // Don't fail the entire fetch if bulk requests fail
+        }
+      }
+      
       const feedbackData = await api.getFeedback();
       setFeedback(feedbackData);
       const complaintsData = await api.getComplaints();
@@ -48,6 +67,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       setLoading(false);
     }
   }, [user.email, user.role]);
+
+  const handleBulkStatusUpdate = async () => {
+    if (!selectedBulkRequest || !newBulkStatus) return;
+    
+    setBulkStatusLoading(true);
+    setError(null);
+    
+    try {
+      const updatedBulkRequest = await api.updateBulkServiceRequestStatus(
+        selectedBulkRequest.id, 
+        newBulkStatus as any, 
+        user.email
+      );
+      
+      // Update the local state
+      setBulkRequests(prev => 
+        prev.map(req => req.id === selectedBulkRequest.id ? updatedBulkRequest : req)
+      );
+      
+      // Update the selected request
+      setSelectedBulkRequest(updatedBulkRequest);
+      
+      // Close the modal
+      setShowBulkStatusModal(false);
+      setNewBulkStatus('');
+      
+      alert('Bulk request status updated successfully!');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBulkStatusLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -99,10 +151,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const handleUpdateRequest = () => {
     fetchData();
     setSelectedRequest(null);
+    setSelectedBulkRequest(null);
   };
   
   if (selectedRequest) {
     return <ServiceRequestDetails request={selectedRequest} onBack={() => setSelectedRequest(null)} user={user} onUpdate={handleUpdateRequest}/>;
+  }
+
+  if (selectedBulkRequest) {
+    return <BulkServiceRequestDetails request={selectedBulkRequest} onBack={() => setSelectedBulkRequest(null)} user={user} onUpdate={handleUpdateRequest}/>;
   }
 
   return (
@@ -122,6 +179,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'overview' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Service Requests
             </button>
+            {(user.role === Role.Service || user.role === Role.EPR || user.role === Role.Admin) && (
+              <button onClick={() => setActiveTab('bulk-requests')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'bulk-requests' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                Bulk Requests <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-blue-100 text-blue-800 rounded-full">{bulkRequests.length}</span>
+              </button>
+            )}
             <button onClick={() => setActiveTab('complaints')} className={`whitespace-nowrap py-2 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === 'complaints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
               Customer Complaints <span className="ml-1 inline-block py-0.5 px-2.5 leading-none text-center whitespace-nowrap align-baseline font-bold bg-red-100 text-red-800 rounded-full">{complaints.filter(c => !c.is_resolved).length}</span>
             </button>
@@ -147,6 +209,209 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
       {activeTab === 'analytics' && user.role === Role.Admin && (
         <AnalyticsCharts requests={requests} feedback={feedback} />
+      )}
+
+      {activeTab === 'bulk-requests' && (user.role === Role.Service || user.role === Role.EPR || user.role === Role.Admin) && (
+        <div className="space-y-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Bulk Service Requests</h2>
+          
+          {bulkRequests.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No bulk requests assigned</h3>
+              <p className="text-gray-500 dark:text-gray-400">You don't have any bulk service requests assigned to you yet.</p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Request ID
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Requester
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Priority
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Equipment Count
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Created
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {bulkRequests.map((request) => (
+                      <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {request.id.substring(0, 8)}...
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {request.requester_name}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            request.status === 'under_review' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                            request.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            request.status === 'in_progress' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                            request.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          }`}>
+                            {request.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            request.priority === 'urgent' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                            request.priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                            request.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          }`}>
+                            {request.priority.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {request.total_equipment_count}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                          <button
+                            onClick={() => setSelectedBulkRequest(request)}
+                            className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+
+      {/* Bulk Request Status Update Modal */}
+      {showBulkStatusModal && selectedBulkRequest && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-4 sm:top-20 mx-auto p-4 sm:p-6 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                Update Bulk Request Status
+              </h3>
+              <button
+                onClick={() => {
+                  setShowBulkStatusModal(false);
+                  setNewBulkStatus('');
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 sm:space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Current Status
+                </label>
+                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    selectedBulkRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                    selectedBulkRequest.status === 'under_review' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                    selectedBulkRequest.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                    selectedBulkRequest.status === 'in_progress' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                    selectedBulkRequest.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  }`}>
+                    {selectedBulkRequest.status.replace('_', ' ').toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  New Status
+                </label>
+                <select
+                  value={newBulkStatus}
+                  onChange={(e) => setNewBulkStatus(e.target.value)}
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:shadow-md focus:shadow-lg hover:border-primary-300 text-sm sm:text-base"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="under_review">Under Review (Diagnosis)</option>
+                  <option value="approved">Approved</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              {newBulkStatus === 'under_review' && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-blue-400 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">EPR Assignment</p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        When status changes to "Under Review", an EPR team member will be automatically assigned to this bulk request.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+              <button
+                onClick={() => {
+                  setShowBulkStatusModal(false);
+                  setNewBulkStatus('');
+                }}
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm sm:text-base font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkStatusUpdate}
+                disabled={bulkStatusLoading || !newBulkStatus || newBulkStatus === selectedBulkRequest.status}
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 border border-transparent rounded-md text-sm sm:text-base font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none disabled:bg-primary-300 disabled:cursor-not-allowed transition-colors duration-200"
+              >
+                {bulkStatusLoading ? 'Updating...' : 'Update Status'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeTab === 'overview' && (

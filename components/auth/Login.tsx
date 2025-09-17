@@ -315,7 +315,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onForgotPassword }) => {
                         { role: "Admin", email: "admin@test.com", password: "admin123" },
                         { role: "Service (Mukesh)", email: "mukesh@test.com", password: "mukesh123" },
                         { role: "Service (Suresh)", email: "suresh@test.com", password: "suresh123" },
-                        { role: "Partner", email: "partner@test.com", password: "partner123" },
+                        { role: "Channel Partner", email: "partner@test.com", password: "partner123" },
+                        { role: "System Integrator", email: "system.integrator@test.com", password: "integrator123" },
                         { role: "EPR (Mohit)", email: "mohit@test.com", password: "mohit123" },
                         { role: "EPR (Rohit)", email: "rohit@test.com", password: "rohit123" }
                       ].map((account, index) => (
